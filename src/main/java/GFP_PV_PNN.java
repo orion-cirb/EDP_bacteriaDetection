@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import loci.common.services.DependencyException;
@@ -103,7 +104,6 @@ public class GFP_PV_PNN implements PlugIn {
             for (String f : imageFiles) {
                 reader.setId(f);
                 String rootName = FilenameUtils.getBaseName(f);
-                // Find xml points file
                 ImporterOptions options = new ImporterOptions();
                 options.setId(f);
                 options.setSplitChannels(true);
@@ -171,19 +171,38 @@ public class GFP_PV_PNN implements PlugIn {
                 tools.flush_close(imgDapiFoci);
 
                 // write cells data
-                int index = 0;
                 for (Cells_PV pvCell : pvCellsList) {
-                    cells_results_analyze.write(rootName+"\t"+pvCell.getPvCellLabel()+"\t"+pvCell.getPvCellVol()+"\t"+pvCell.getPvCellInt()+"\t"+
+                    if (pvCell.getPvIsPNN()) {
+                        int PV_PNNLabel = pvCell.getPvCellPNNLabel();
+                        Optional<Cells_PV> pvPnnCell = pvCellsList.stream().filter(c -> c.getPnnCellLabel() == PV_PNNLabel).findFirst();
+                        Cells_PV pnnCell = pvPnnCell.get();
+                        cells_results_analyze.write(rootName+"\t"+pvCell.getPvCellLabel()+"\t"+pvCell.getPvCellVol()+"\t"+pvCell.getPvCellInt()+"\t"+
                         pvCell.getPvCellGFPInt()+"\t"+pvCell.getPvNbGFPFoci()+"\t"+pvCell.getPvGFPFociVol()+"\t"+pvCell.getPvGFPFociInt()+"\t"+
                         pvCell.getPvCellDapiInt()+"\t"+pvCell.getPvNbDapiFoci()+"\t"+pvCell.getPvDapiFociVol()+"\t"+pvCell.getPvFociDapiInt()+"\t"+
-                        pvCell.getPvIsPNN()+"\t"+pvCell.getPnnCellLabel()+"\t"+pvCell.getPnnCellVol()+"\t"+pvCell.getPnnCellInt()+"\t"+
-                        pvCell.getPnnCellGFPInt()+"\t"+pvCell.getPnnNbGFPFoci()+"\t"+pvCell.getPnnGFPFociVol()+"\t"+pvCell.getPnnGFPFociInt()+"\t"+
-                        pvCell.getPnnCellDapiInt()+"\t"+pvCell.getPnnNbDapiFoci()+"\t"+pvCell.getPnnDapiFociVol()+"\t"+pvCell.getPnnDapiFociInt()+"\n");
-                    cells_results_analyze.flush();
+                        pvCell.getPvIsPNN()+"\t"+pnnCell.getPnnCellLabel()+"\t"+pnnCell.getPnnCellVol()+"\t"+pnnCell.getPnnCellInt()+"\t"+
+                        pnnCell.getPnnCellGFPInt()+"\t"+pnnCell.getPnnNbGFPFoci()+"\t"+pnnCell.getPnnGFPFociVol()+"\t"+pnnCell.getPnnGFPFociInt()+"\t"+
+                        pnnCell.getPnnCellDapiInt()+"\t"+pnnCell.getPnnNbDapiFoci()+"\t"+pnnCell.getPnnDapiFociVol()+"\t"+pnnCell.getPnnDapiFociInt()+"\n");
+                        cells_results_analyze.flush();
+                    }
+                    else {
+                        cells_results_analyze.write(rootName+"\t"+pvCell.getPvCellLabel()+"\t"+pvCell.getPvCellVol()+"\t"+pvCell.getPvCellInt()+"\t"+
+                        pvCell.getPvCellGFPInt()+"\t"+pvCell.getPvNbGFPFoci()+"\t"+pvCell.getPvGFPFociVol()+"\t"+pvCell.getPvGFPFociInt()+"\t"+
+                        pvCell.getPvCellDapiInt()+"\t"+pvCell.getPvNbDapiFoci()+"\t"+pvCell.getPvDapiFociVol()+"\t"+pvCell.getPvFociDapiInt()+"\t"+
+                        pvCell.getPvIsPNN()+"\t");
+                        cells_results_analyze.flush();
+                        if (pvCell.getPnnCellLabel() == 0) {
+                            cells_results_analyze.write("\t\t\t\t\t\t\t\t\t\t\n");
+                            cells_results_analyze.flush();
+                        }
+                        else {
+                            cells_results_analyze.write(pvCell.getPnnCellLabel()+"\t"+pvCell.getPnnCellVol()+"\t"+pvCell.getPnnCellInt()+"\t"+
+                            pvCell.getPnnCellGFPInt()+"\t"+pvCell.getPnnNbGFPFoci()+"\t"+pvCell.getPnnGFPFociVol()+"\t"+pvCell.getPnnGFPFociInt()+"\t"+
+                            pvCell.getPnnCellDapiInt()+"\t"+pvCell.getPnnNbDapiFoci()+"\t"+pvCell.getPnnDapiFociVol()+"\t"+pvCell.getPnnDapiFociInt()+"\n");
+                            cells_results_analyze.flush();
+                        }
+                    }
                 }
-                
             }
-
         } catch (IOException | DependencyException | ServiceException | FormatException | io.scif.DependencyException  ex) {
             Logger.getLogger(GFP_PV_PNN.class.getName()).log(Level.SEVERE, null, ex);
         }

@@ -5,8 +5,6 @@
  */
 package GFP_PV_PNN_Tools;
 
-import mcib3d.geom.Voxel3D;
-
 /**
  *
  * @author phm
@@ -14,35 +12,47 @@ import mcib3d.geom.Voxel3D;
 public class Cells_PV {
     private double pvLabel;
     private double pvVol;
-    private double pvInt;
-    private double pvGFPInt;
-    private double pvDapiInt;
+    private double pvSumInt;
+    private double pvMeanInt;
+    private double pvGFPSumInt;
+    private double pvGFPMeanInt;
+    private double pvDapiSumInt;
+    private double pvDapiMeanInt;
     private boolean pvCell_PNN;
+    private int pvCell_PNNLabel;
     private int pvNbGFPFoci;
     private double pvGFPFociVol;
-    private double pvGFPFociInt;
+    private double pvGFPFociSumInt;
+    private double pvGFPFociMeanInt;
     private int pvNbDapiFoci;
     private double pvDapiFociVol;
-    private double pvDapiFociInt;
+    private double pvDapiFociSumInt;
+    private double pvDapiFociMeanInt;
     private double pnnLabel;
     private double pnnVol;
-    private double pnnInt;
-    private double pnnGFPInt;
-    private double pnnDapiInt;
+    private double pnnSumInt;
+    private double pnnMeanInt;
+    private double pnnGFPSumInt;
+    private double pnnGFPMeanInt;
+    private double pnnDapiSumInt;
+    private double pnnDapiMeanInt;
     private int pnnNbGFPFoci;
     private double pnnGFPFociVol;
-    private double pnnGFPFociInt;
+    private double pnnGFPFociSumInt;
+    private double pnnGFPFociMeanInt;
     private int pnnNbDapiFoci;
     private double pnnDapiFociVol;
-    private double pnnDapiFociInt; 
+    private double pnnDapiFociSumInt;
+    private double pnnDapiFociMeanInt;  
     
    
 	
-	public Cells_PV(double pvLabel, boolean pvCell_PNN, double pvVol, double pvInt, double pvGFPInt, int pvNbGFPFoci, double pvGFPFociVol, double pvGFPFociInt,
+	public Cells_PV(double pvLabel, boolean pvCell_PNN, int pvCell_PNNLabel, double pvVol, double pvInt, double pvGFPInt, int pvNbGFPFoci, double pvGFPFociVol, double pvGFPFociInt,
                 double pvDapiInt, int pvNbDapiFoci, double pvDapiFociVol, double pvDapiFociInt, double pnnLabel, double pnnVol, double pnnInt, double pnnGFPInt,
                 int pnnNbGFPFoci, double pnnGFPFociVol, double pnnGFPFociInt, double pnnDapiInt, int pnnNbDapiFoci, double pnnDapiFociVol, double pnnDapiFociInt) {
             this.pvLabel = pvLabel;
             this.pvCell_PNN = pvCell_PNN;
+            this.pvCell_PNNLabel = pvCell_PNNLabel;
             this.pvVol = pvVol;
             this.pvInt = pvInt;
             this.pvGFPInt = pvGFPInt;
@@ -76,6 +86,10 @@ public class Cells_PV {
         
         public void setPvCellVol(double pvVol) {
             this.pvVol = pvVol;
+	}
+        
+        public void setPvCellPNNLabel(int label) {
+            this.pvCell_PNNLabel = label;
 	}
         
         public void setPvCellInt(double pvInt) {
@@ -164,6 +178,10 @@ public class Cells_PV {
         
         public boolean getPvIsPNN() {
             return(pvCell_PNN);
+	}
+        
+        public int getPvCellPNNLabel() {
+            return(pvCell_PNNLabel);
 	}
         
         public double getPvCellVol() {

@@ -13,6 +13,7 @@ import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.plugin.Duplicator;
 import ij.plugin.RGBStackMerge;
+import ij.plugin.ZProjector;
 import ij.process.ImageProcessor;
 import io.scif.DependencyException;
 import java.awt.Color;
@@ -24,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import javax.swing.ImageIcon;
 import loci.common.services.ServiceException;
 import loci.formats.FormatException;
@@ -41,7 +41,6 @@ import mcib3d.geom2.measurements.MeasureVolume;
 import mcib3d.geom2.measurementsPopulation.MeasurePopulationColocalisation;
 import mcib3d.image3d.ImageHandler;
 import mcib3d.image3d.ImageInt;
-import mcib3d.utils.ArrayUtil;
 import net.haesleinhuepf.clij.clearcl.ClearCLBuffer;
 import net.haesleinhuepf.clij2.CLIJ2;
 import org.apache.commons.io.FilenameUtils;
@@ -74,7 +73,7 @@ public class Tools {
     private String stardistFociModel = "pmls2.zip";
     
      // Cellpose
-    public int cellPoseDiameter = 50;
+    public int cellPoseDiameter = 100;
     private boolean useGpu = true;
     private String[] cellposeModels = {"cyto","nuclei","tissuenet","livecell", "cyto2", "general","CP", "CPx", "TN1", "TN2", "TN3", "LC1",
         "LC2", "LC3", "LC4"};
@@ -144,13 +143,17 @@ public class Tools {
     */
     public void pvCellsParameters (Object3DInt cell, Objects3DIntPopulation pop, ArrayList<Cells_PV> pvCells, ImagePlus img, String cellType, String fociType) {
         double vol = 0;
-        double Int = 0;
+        double sumInt = 0;
+        double meanInt = 0;
+        double bg = findBackground(img);
         for (Object3DInt obj : pop.getObjects3DInt()) {
             vol += new MeasureVolume(obj).getVolumeUnit();
-            Int = new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM);
+            sumInt += new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM) - bg*obj.size();
+            meanInt += new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG) - bg;
         }
         int cellIndex = (int)(cell.getLabel()-1);
-        double cellInt = new MeasureIntensity(cell, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM);
+        double cellSumInt = new MeasureIntensity(cell, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM) - bg*cell.size();
+        double cellMeanInt = new MeasureIntensity(cell, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG) - bg;
         switch (cellType) {
             case "PV" :
                 if (fociType.equals("GFP")) {
@@ -197,7 +200,7 @@ public class Tools {
                 case "PV" :
                     // check if PV cell label is in arrayList
                     if (pvCells.size() < objLabel) {
-                        cell = new Cells_PV(objLabel, false, cellVol, cellInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                        cell = new Cells_PV(objLabel, false, 0, cellVol, cellInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                         pvCells.add(cell);
                     }
                     else {
@@ -209,7 +212,7 @@ public class Tools {
                 case "PNN" :
                     // check if PNN cell label is in arrayList
                     if (pvCells.size() < objLabel) {
-                        cell = new Cells_PV(0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, obj.getLabel(), cellVol, cellInt, 0, 0, 0, 0, 0, 0, 0, 0);
+                        cell = new Cells_PV(0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, obj.getLabel(), cellVol, cellInt, 0, 0, 0, 0, 0, 0, 0, 0);
                         pvCells.add(cell);
                     }
                     else {
@@ -418,6 +421,13 @@ public class Tools {
     /** 
     For each each find dots
     * return dots pop cell population
+     * @param img
+     * @param cellPop
+     * @param cellType
+     * @param fociType
+     * @param cells
+     * @return 
+     * @throws java.io.IOException 
      */
         public Objects3DIntPopulation stardistFociInCellsPop(ImagePlus img, Objects3DIntPopulation cellPop, String cellType, 
                 String fociType, ArrayList<Cells_PV> cells) throws IOException{
@@ -425,13 +435,12 @@ public class Tools {
             float fociIndex = 0;
             for (Object3DInt cell: cellPop.getObjects3DInt()) {
                 BoundingBox box = cell.getBoundingBox();
-                int ZStartCell = box.zmin +1;
-                int ZStopCell = box.zmax + 1;
-                Roi roiBox = new Roi(box.xmin, box.ymin, box.xmax-box.xmin + 1 , box.ymax - box.ymin + 1);
+                Roi roiBox = new Roi(box.xmin, box.ymin, box.xmax-box.xmin, box.ymax - box.ymin);
                 img.setRoi(roiBox);
                 img.updateAndDraw();
+                
                 // Crop image
-                ImagePlus imgCell = new Duplicator().run(img, ZStartCell, ZStopCell);
+                ImagePlus imgCell = new Duplicator().run(img, box.zmin + 1, box.zmax +1);
                 imgCell.deleteRoi();
                 imgCell.updateAndDraw();
                 ClearCLBuffer imgCL = clij2.push(imgCell);
@@ -440,7 +449,7 @@ public class Tools {
                 clij2.release(imgCL);
                 ImagePlus imgM = clij2.pull(imgCLM);
                 clij2.release(imgCLM);
-            
+
                 // Go StarDist
                 File starDistModelFile = new File(stardistFociModel);
                 StarDist2D star = new StarDist2D(syncObject, starDistModelFile);
@@ -452,26 +461,21 @@ public class Tools {
                 ImagePlus imgLabels = star.associateLabels();
                 imgLabels.setCalibration(cal);
                 ImageInt label3D = ImageInt.wrap(imgLabels);
-                Objects3DIntPopulation fociPop = new Objects3DIntPopulationComputation(new Objects3DIntPopulation(label3D)).
-                        getFilterSize(minFociVol/pixVol, maxFociVol/pixVol);
-                fociPop.resetLabels();
-                fociPop.setVoxelSizeXY(cal.pixelWidth);
-                fociPop.setVoxelSizeZ(cal.pixelDepth);
-                // find foci in cell
-                Object3DInt cellT = new Object3DComputation(cell).getObject3DCopy();
-                cellT.translate(-box.xmin, -box.ymin, -ZStartCell + 1);
-                Objects3DIntPopulation fociColocPop = findColocCell(cellT, fociPop);
+                Objects3DIntPopulation fociPop = popFilterOneZ(new Objects3DIntPopulation(label3D));
+                Objects3DIntPopulation fociPopFilterSize = new Objects3DIntPopulationComputation(fociPop).getFilterSize(minFociVol/pixVol, maxFociVol/pixVol);
+                fociPopFilterSize.resetLabels();
+                fociPopFilterSize.setVoxelSizeXY(cal.pixelWidth);
+                fociPopFilterSize.setVoxelSizeZ(cal.pixelDepth);
+                // find foci in cell translate foci in global image
+                translateObjects(fociPopFilterSize, box.xmin, box.ymin, box.zmin);
+                Objects3DIntPopulation fociColocPop = findColocCell(cell, fociPopFilterSize);
                 System.out.println(fociColocPop.getNbObjects()+" foci "+fociType+" found in "+cellType+" cell "+cell.getLabel());
                 // add foci info in cell
                 pvCellsParameters(cell, fociColocPop, cells, img, cellType, fociType);
-                // reset foci in global image
-                int tx = box.xmin;
-                int ty = box.ymin;
-                int tz = ZStartCell;
                 for (Object3DInt foci: fociColocPop.getObjects3DInt()) {
-                    foci.translate(tx, ty, tz-1);
                     fociIndex++;
                     foci.setLabel(fociIndex);
+                    foci.setType((int)cell.getLabel());
                     allFociPop.addObject(foci);
                 }
                 flush_close(imgCell);
@@ -481,6 +485,14 @@ public class Tools {
             return(allFociPop);
         }
   
+        
+    private void translateObjects(Objects3DIntPopulation pop, int xmin, int ymin, int zmin) {
+        pop.translateObjects(xmin, ymin, zmin); 
+        for (Object3DInt obj: pop.getObjects3DInt()) {
+                BoundingBox objBox = obj.getBoundingBox();
+                objBox.setBounding(objBox.xmin+xmin, objBox.xmax+xmin, objBox.ymin+ymin, objBox.ymax+ymin, objBox.zmin+zmin, objBox.zmax+zmin);
+        }
+    }
         
      /**
      * Find volume of objects  
@@ -524,7 +536,7 @@ public class Tools {
         // resize to be in a friendly scale
         int width = imgCell.getWidth();
         int height = imgCell.getHeight();
-        float factor = 0.25f;
+        float factor = 0.5f;
         boolean resized = false;
         if (imgCell.getWidth() > 1024) {
             imgIn = imgCell.resize((int)(width*factor), (int)(height*factor), 1, "none");
@@ -534,9 +546,7 @@ public class Tools {
             imgIn = new Duplicator().run(imgCell);
         imgIn.setCalibration(cal);
         CellposeTaskSettings settings = new CellposeTaskSettings(cellposeModel, 1, cellPoseDiameter, cellPoseEnvDirPath);
-        settings.setCellProbTh(0);
         settings.setStitchThreshold(0.25); 
-        settings.setFlowTh(0.6);
         settings.useGpu(true);
         CellposeSegmentImgPlusAdvanced cellpose = new CellposeSegmentImgPlusAdvanced(settings, imgIn);
         ImagePlus cellpose_img = cellpose.run(); 
@@ -569,19 +579,53 @@ public class Tools {
     }
     
     /**
-     * Find objects population coloc in objet 
+     * Do Z projection
+     * @param img
+     * @param projection parameter
      */
-    public Objects3DIntPopulation findColocCell(Object3DInt cellObj, Objects3DIntPopulation pop1) {
-        Objects3DIntPopulation objs = new Objects3DIntPopulation();
-        for (Object3DInt obj1 : pop1.getObjects3DInt()) {
-            Measure2Colocalisation coloc = new Measure2Colocalisation(obj1, cellObj);
-            if (coloc.getValue(Measure2Colocalisation.COLOC_VOLUME) > 0.5*obj1.size())
-                objs.addObject(obj1);
-        }
-        objs.setVoxelSizeXY(cal.pixelWidth);
-        objs.setVoxelSizeZ(cal.pixelDepth);
-        return(objs);
+    public ImagePlus doZProjection(ImagePlus img, int param) {
+        ZProjector zproject = new ZProjector();
+        zproject.setMethod(param);
+        zproject.setStartSlice(1);
+        zproject.setStopSlice(img.getNSlices());
+        zproject.setImage(img);
+        zproject.doProjection();
+       return(zproject.getProjection());
     }
+    
+     /**
+     * Find background image intensity:
+     * Z projection over median intensity + read mean intensity
+     * @param img
+     */
+    public double findBackground(ImagePlus img) {
+      ImagePlus imgProj = doZProjection(img, ZProjector.MEDIAN_METHOD);
+      ImageProcessor imp = imgProj.getProcessor();
+      double bg = imp.getStatistics().mean;
+      System.out.println("Background = " + bg);
+      flush_close(imgProj);
+      return(bg);
+    }
+    
+    /**
+     * Find dots population colocalizing with a cell objet
+     */
+    public Objects3DIntPopulation findColocCell(Object3DInt cellObj, Objects3DIntPopulation dotsPop) {
+        Objects3DIntPopulation cellPop = new Objects3DIntPopulation();
+        cellPop.addObject(cellObj);
+        Objects3DIntPopulation colocPop = new Objects3DIntPopulation();
+        if (dotsPop.getNbObjects() > 0) {
+            MeasurePopulationColocalisation coloc = new MeasurePopulationColocalisation(cellPop, dotsPop);
+            for (Object3DInt dot: dotsPop.getObjects3DInt()) {
+                    double colocVal = coloc.getValueObjectsPair(cellObj, dot);
+                    if (colocVal > 0.5*dot.size()) {
+                        colocPop.addObject(dot);
+                    }
+            }
+        }
+        return(colocPop);
+    }
+
     
     /**
      * Find coloc cells
@@ -595,8 +639,9 @@ public class Tools {
             for (Object3DInt obj1: pop1.getObjects3DInt()) {
                 for (Object3DInt obj2 : pop2.getObjects3DInt()) {
                     double colocVal = coloc.getValueObjectsPair(obj1, obj2);
-                    if ( colocVal > 0.2*obj1.size()) {
+                    if (colocVal > 0.25*obj1.size() || (colocVal > 0.25*obj2.size())) {
                         pvCells.get((int)obj1.getLabel()-1).setPvCellIsPNN(true);
+                        pvCells.get((int)obj1.getLabel()-1).setPvCellPNNLabel((int)obj2.getLabel());
                         break;
                     }
                 }
@@ -656,23 +701,23 @@ public class Tools {
         ImageHandler imgObj4 = imgObj1.createSameDimensions();
         if (pop2.getNbObjects() > 0)
             for (Object3DInt obj : pop2.getObjects3DInt())
-                obj.drawObject(imgObj4, 255);        
+                obj.drawObject(imgObj4, obj.getType());        
         
         // Foci pv DAPI blue
         ImageHandler imgObj3 = imgObj1.createSameDimensions();
         if (pop3.getNbObjects() > 0)
             for (Object3DInt obj : pop3.getObjects3DInt())
-                obj.drawObject(imgObj3, 255);        
+                obj.drawObject(imgObj3, obj.getType());        
         
          // Foci pnn GFP cyan
         if (pop5.getNbObjects() > 0)
             for (Object3DInt obj : pop5.getObjects3DInt())
-                obj.drawObject(imgObj4, 255);        
+                obj.drawObject(imgObj4, obj.getType());        
         
         // Foci pnn DAPI blue
         if (pop6.getNbObjects() > 0)
             for (Object3DInt obj : pop6.getObjects3DInt())
-                obj.drawObject(imgObj3, 255);        
+                obj.drawObject(imgObj3, obj.getType());        
         
    
         // save image for objects population
