@@ -60,8 +60,8 @@ public class Tools {
     public boolean canceled = false;
     public double minCellVol = 300;
     public double maxCellVol = 5000;
-    public double minFociVol = 0.02;
-    public double maxFociVol = 0.5;
+    public double minFociVol = 0.2;
+    public double maxFociVol = 10;
     
     private Object syncObject = new Object();
     private final double stardistPercentileBottom = 0.2;
