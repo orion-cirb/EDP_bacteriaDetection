@@ -66,11 +66,11 @@ public class Tools {
     private Object syncObject = new Object();
     private final double stardistPercentileBottom = 0.2;
     private final double stardistPercentileTop = 99.8;
-    private final double stardistFociProbThresh = 0.05;
+    private final double stardistFociProbThresh = 0.8;
     private final double stardistFociOverlayThresh = 0.25;
     private File modelsPath = new File(IJ.getDirectory("imagej")+File.separator+"models");
     private String stardistOutput = "Label Image"; 
-    private String stardistFociModel = "pmls2.zip";
+    private String stardistFociModel = "StandardFluo.zip";
     
      // Cellpose
     public int cellPoseDiameter = 100;
@@ -130,11 +130,14 @@ public class Tools {
      * @param sizeXY
      * @param sizeZ
      */ 
-    public ClearCLBuffer median_filter(ClearCLBuffer  imgCL, double sizeXY, double sizeZ) {
+    public ImagePlus median_filter(ImagePlus  img, double sizeXY, double sizeZ) {
+        ClearCLBuffer imgCL = clij2.push(img);
         ClearCLBuffer imgCLMed = clij2.create(imgCL);
         clij2.mean3DBox(imgCL, imgCLMed, sizeXY, sizeXY, sizeZ);
         clij2.release(imgCL);
-        return(imgCLMed);
+        ImagePlus imgMed = clij2.pull(imgCLMed);
+        clij2.release(imgCLMed);
+        return(imgMed);
     }
 
    
@@ -142,44 +145,45 @@ public class Tools {
     Add cells parameters
     */
     public void pvCellsParameters (Object3DInt cell, Objects3DIntPopulation pop, ArrayList<Cells_PV> pvCells, ImagePlus img, String cellType, String fociType) {
-        double vol = 0;
-        double sumInt = 0;
-        double meanInt = 0;
+        double fociVol = 0;
+        double fociMeanInt = 0;
         double bg = findBackground(img);
         for (Object3DInt obj : pop.getObjects3DInt()) {
-            vol += new MeasureVolume(obj).getVolumeUnit();
-            sumInt += new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM) - bg*obj.size();
-            meanInt += new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG) - bg;
+            fociVol += new MeasureVolume(obj).getVolumeUnit();
+            fociMeanInt += new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG) - bg;
         }
         int cellIndex = (int)(cell.getLabel()-1);
-        double cellSumInt = new MeasureIntensity(cell, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM) - bg*cell.size();
         double cellMeanInt = new MeasureIntensity(cell, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG) - bg;
         switch (cellType) {
             case "PV" :
                 if (fociType.equals("GFP")) {
-                    pvCells.get(cellIndex).setPvCellGFPInt(cellInt);
-                    pvCells.get(cellIndex).setPvGFPFociVol(vol);
-                    pvCells.get(cellIndex).setPvGFPFociInt(Int);
+                    pvCells.get(cellIndex).setGFPBgMeanInt(bg);
+                    pvCells.get(cellIndex).setPvCellGFPMeanInt(cellMeanInt);
+                    pvCells.get(cellIndex).setPvGFPFociVol(fociVol);
+                    pvCells.get(cellIndex).setPvGFPFociMeanInt(fociMeanInt);
                     pvCells.get(cellIndex).setPvNbGFPFoci(pop.getNbObjects());
                 }
                 else {
-                    pvCells.get(cellIndex).setPvCellDapiInt(cellInt);
-                    pvCells.get(cellIndex).setPvDapiFociVol(vol);
-                    pvCells.get(cellIndex).setPvDapiFociInt(Int);
+                    pvCells.get(cellIndex).setDapiBgMeanInt(bg);
+                    pvCells.get(cellIndex).setPvCellDapiMeanInt(cellMeanInt);
+                    pvCells.get(cellIndex).setPvDapiFociVol(fociVol);
+                    pvCells.get(cellIndex).setPvDapiFociMeanInt(fociMeanInt);
                     pvCells.get(cellIndex).setPvNbDapiFoci(pop.getNbObjects());
                 }
                 break;
             case "PNN" :
                 if (fociType.equals("GFP")) {
-                    pvCells.get(cellIndex).setPnnCellGFPInt(cellInt);
-                    pvCells.get(cellIndex).setPnnGFPFociVol(vol);
-                    pvCells.get(cellIndex).setPnnGFPFociInt(Int);
+                    pvCells.get(cellIndex).setGFPBgMeanInt(bg);
+                    pvCells.get(cellIndex).setPnnCellGFPMeanInt(cellMeanInt);
+                    pvCells.get(cellIndex).setPnnGFPFociVol(fociVol);
+                    pvCells.get(cellIndex).setPnnGFPFociMeanInt(fociMeanInt);
                     pvCells.get(cellIndex).setPnnNbGFPFoci(pop.getNbObjects());
                 }
                 else {
-                    pvCells.get(cellIndex).setPnnCellDapiInt(cellInt);
-                    pvCells.get(cellIndex).setPnnDapiFociVol(vol);
-                    pvCells.get(cellIndex).setPnnDapiFociInt(Int);
+                    pvCells.get(cellIndex).setDapiBgMeanInt(bg);
+                    pvCells.get(cellIndex).setPnnCellDapiMeanInt(cellMeanInt);
+                    pvCells.get(cellIndex).setPnnDapiFociVol(fociVol);
+                    pvCells.get(cellIndex).setPnnDapiFociMeanInt(fociMeanInt);
                     pvCells.get(cellIndex).setPnnNbDapiFoci(pop.getNbObjects());
                 }
                 break;
@@ -191,34 +195,38 @@ public class Tools {
     * Initiate with pv first
     */
     public void pvCellsParameters (Objects3DIntPopulation cellsPop, ArrayList<Cells_PV> pvCells, ImagePlus img, String cellType) {
+        double bg = findBackground(img);
         for (Object3DInt obj : cellsPop.getObjects3DInt()) {
             float objLabel = obj.getLabel();
             double cellVol = new MeasureVolume(obj).getVolumeUnit();
-            double cellInt = new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_SUM);
+            double cellMeanInt = new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG)-bg;
+            
             Cells_PV cell = null;
             switch (cellType) {
                 case "PV" :
                     // check if PV cell label is in arrayList
                     if (pvCells.size() < objLabel) {
-                        cell = new Cells_PV(objLabel, false, 0, cellVol, cellInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                        cell = new Cells_PV(objLabel, false, 0, cellVol, bg, cellMeanInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                         pvCells.add(cell);
                     }
                     else {
-                        pvCells.get((int)objLabel-1).setPnnCellLabel(obj.getLabel());
-                        pvCells.get((int)objLabel-1).setPnnCellVol(cellVol);
-                        pvCells.get((int)objLabel-1).setPnnCellInt(cellInt);   
+                        pvCells.get((int)objLabel-1).setPvCellLabel(obj.getLabel());
+                        pvCells.get((int)objLabel-1).setPvCellVol(cellVol);
+                        pvCells.get((int)objLabel-1).setPvBgMeanInt(bg);
+                        pvCells.get((int)objLabel-1).setPvCellMeanInt(cellMeanInt);   
                     }
                     break;
                 case "PNN" :
                     // check if PNN cell label is in arrayList
                     if (pvCells.size() < objLabel) {
-                        cell = new Cells_PV(0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, obj.getLabel(), cellVol, cellInt, 0, 0, 0, 0, 0, 0, 0, 0);
+                        cell = new Cells_PV(0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, obj.getLabel(), cellVol, bg, cellMeanInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                         pvCells.add(cell);
                     }
                     else {
                         pvCells.get((int)objLabel-1).setPnnCellLabel(obj.getLabel());
                         pvCells.get((int)objLabel-1).setPnnCellVol(cellVol);
-                        pvCells.get((int)objLabel-1).setPnnCellInt(cellInt);                        
+                        pvCells.get((int)objLabel-1).setPnnBgMeanInt(bg);
+                        pvCells.get((int)objLabel-1).setPnnCellMeanInt(cellMeanInt);                        
                     }
                     break;
             }
@@ -443,17 +451,12 @@ public class Tools {
                 ImagePlus imgCell = new Duplicator().run(img, box.zmin + 1, box.zmax +1);
                 imgCell.deleteRoi();
                 imgCell.updateAndDraw();
-                ClearCLBuffer imgCL = clij2.push(imgCell);
-                ClearCLBuffer imgCLM = clij2.create(imgCL);
-                imgCLM = median_filter(imgCL, 2, 2);
-                clij2.release(imgCL);
-                ImagePlus imgM = clij2.pull(imgCLM);
-                clij2.release(imgCLM);
+                ImagePlus imgDog = median_filter(imgCell, 1, 1);
 
                 // Go StarDist
                 File starDistModelFile = new File(stardistFociModel);
                 StarDist2D star = new StarDist2D(syncObject, starDistModelFile);
-                star.loadInput(imgM);
+                star.loadInput(imgDog);
                 star.setParams(stardistPercentileBottom, stardistPercentileTop, stardistFociProbThresh, stardistFociOverlayThresh, stardistOutput);
                 star.run();
                 
@@ -480,7 +483,7 @@ public class Tools {
                 }
                 flush_close(imgCell);
                 flush_close(imgLabels);
-                flush_close(imgM);
+                flush_close(imgDog);
             }
             return(allFociPop);
         }
@@ -701,24 +704,25 @@ public class Tools {
         ImageHandler imgObj4 = imgObj1.createSameDimensions();
         if (pop2.getNbObjects() > 0)
             for (Object3DInt obj : pop2.getObjects3DInt())
-                obj.drawObject(imgObj4, obj.getType());        
-        
+                //obj.drawObject(imgObj4, obj.getType());        
+                obj.drawObject(imgObj4, obj.getLabel());
         // Foci pv DAPI blue
         ImageHandler imgObj3 = imgObj1.createSameDimensions();
         if (pop3.getNbObjects() > 0)
             for (Object3DInt obj : pop3.getObjects3DInt())
-                obj.drawObject(imgObj3, obj.getType());        
-        
+                //obj.drawObject(imgObj3, obj.getType());        
+                obj.drawObject(imgObj3, obj.getLabel());
          // Foci pnn GFP cyan
         if (pop5.getNbObjects() > 0)
             for (Object3DInt obj : pop5.getObjects3DInt())
-                obj.drawObject(imgObj4, obj.getType());        
+                obj.drawObject(imgObj4, obj.getLabel());
+        //obj.drawObject(imgObj4, obj.getType());        
         
         // Foci pnn DAPI blue
         if (pop6.getNbObjects() > 0)
             for (Object3DInt obj : pop6.getObjects3DInt())
-                obj.drawObject(imgObj3, obj.getType());        
-        
+                obj.drawObject(imgObj3, obj.getLabel());        
+        //obj.drawObject(imgObj3, obj.getType());  
    
         // save image for objects population
         ImagePlus[] imgColors = {imgObj1.getImagePlus(), imgObj2.getImagePlus(), imgObj3.getImagePlus(), null, imgObj4.getImagePlus()};

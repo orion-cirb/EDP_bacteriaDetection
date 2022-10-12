@@ -12,68 +12,68 @@ package GFP_PV_PNN_Tools;
 public class Cells_PV {
     private double pvLabel;
     private double pvVol;
-    private double pvSumInt;
+    private double pvBgMeanInt;
     private double pvMeanInt;
-    private double pvGFPSumInt;
+    private double GFPBgMeanInt;
     private double pvGFPMeanInt;
-    private double pvDapiSumInt;
+    private double DapiBgMeanInt;
     private double pvDapiMeanInt;
     private boolean pvCell_PNN;
     private int pvCell_PNNLabel;
     private int pvNbGFPFoci;
     private double pvGFPFociVol;
-    private double pvGFPFociSumInt;
     private double pvGFPFociMeanInt;
     private int pvNbDapiFoci;
     private double pvDapiFociVol;
-    private double pvDapiFociSumInt;
     private double pvDapiFociMeanInt;
     private double pnnLabel;
     private double pnnVol;
-    private double pnnSumInt;
+    private double pnnBgMeanInt;
     private double pnnMeanInt;
-    private double pnnGFPSumInt;
     private double pnnGFPMeanInt;
-    private double pnnDapiSumInt;
     private double pnnDapiMeanInt;
     private int pnnNbGFPFoci;
     private double pnnGFPFociVol;
-    private double pnnGFPFociSumInt;
     private double pnnGFPFociMeanInt;
     private int pnnNbDapiFoci;
     private double pnnDapiFociVol;
-    private double pnnDapiFociSumInt;
     private double pnnDapiFociMeanInt;  
     
    
 	
-	public Cells_PV(double pvLabel, boolean pvCell_PNN, int pvCell_PNNLabel, double pvVol, double pvInt, double pvGFPInt, int pvNbGFPFoci, double pvGFPFociVol, double pvGFPFociInt,
-                double pvDapiInt, int pvNbDapiFoci, double pvDapiFociVol, double pvDapiFociInt, double pnnLabel, double pnnVol, double pnnInt, double pnnGFPInt,
-                int pnnNbGFPFoci, double pnnGFPFociVol, double pnnGFPFociInt, double pnnDapiInt, int pnnNbDapiFoci, double pnnDapiFociVol, double pnnDapiFociInt) {
+	public Cells_PV(double pvLabel, boolean pvCell_PNN, int pvCell_PNNLabel, double pvVol, double pvBgMeanInt, double pvMeanInt, double GFPBgMeanInt,
+                double pvGFPMeanInt, int pvNbGFPFoci, double pvGFPFociVol, double pvGFPFociMeanInt, double DapiBgMeanInt, double pvDapiMeanInt, 
+                int pvNbDapiFoci, double pvDapiFociVol,double pvDapiFociMeanInt, double pnnLabel, double pnnVol, double pnnMeanInt,
+                double pnnBgMeanInt, double pnnGFPMeanInt, int pnnNbGFPFoci, double pnnGFPFociVol, double pnnGFPFociMeanInt, double pnnDapiMeanInt, int pnnNbDapiFoci, 
+                double pnnDapiFociVol, double pnnDapiFociMeanInt) {
             this.pvLabel = pvLabel;
             this.pvCell_PNN = pvCell_PNN;
             this.pvCell_PNNLabel = pvCell_PNNLabel;
             this.pvVol = pvVol;
-            this.pvInt = pvInt;
-            this.pvGFPInt = pvGFPInt;
+            this.pvMeanInt = pvMeanInt;
+            this.pvBgMeanInt = pvBgMeanInt;
+            this.pvGFPMeanInt = pvGFPMeanInt;
+            this.GFPBgMeanInt = GFPBgMeanInt;
             this.pvNbGFPFoci = pvNbGFPFoci;
             this.pvGFPFociVol = pvGFPFociVol;
-            this.pvGFPFociInt = pvGFPFociInt;
-            this.pvDapiInt = pvDapiInt;
+            this.pvGFPFociMeanInt = pvGFPFociMeanInt;
+            this.pvDapiMeanInt = pvDapiMeanInt;
+            this.DapiBgMeanInt = DapiBgMeanInt;
             this.pvNbDapiFoci = pvNbDapiFoci;
             this.pvDapiFociVol = pvDapiFociVol;
-            this.pvDapiFociInt = pvDapiFociInt;
+            this.pvDapiFociMeanInt = pvDapiFociMeanInt;
             this.pnnLabel = pnnLabel;
             this.pnnVol = pnnVol;
-            this.pnnInt= pnnInt;
-            this.pnnGFPInt = pnnGFPInt;
+            this.pnnBgMeanInt = pnnBgMeanInt;
+            this.pnnMeanInt= pnnMeanInt;
+            this.pnnGFPMeanInt = pnnGFPMeanInt;
             this.pnnNbGFPFoci = pnnNbGFPFoci;
             this.pnnGFPFociVol = pnnGFPFociVol;
-            this.pnnGFPFociInt = pnnGFPFociInt;
-            this.pnnDapiInt = pnnDapiInt;
+            this.pnnGFPFociMeanInt = pnnGFPFociMeanInt;
+            this.pnnDapiMeanInt = pnnDapiMeanInt;
             this.pnnNbDapiFoci = pnnNbDapiFoci;
             this.pnnDapiFociVol = pnnDapiFociVol;
-            this.pnnDapiFociInt = pnnDapiFociInt;
+            this.pnnDapiFociMeanInt = pnnDapiFociMeanInt;
 	}
         
         public void setPvCellLabel(double pvLabel) {
@@ -90,14 +90,22 @@ public class Cells_PV {
         
         public void setPvCellPNNLabel(int label) {
             this.pvCell_PNNLabel = label;
+        }
+        
+        public void setPvBgMeanInt(double pvBgMeanInt) {
+            this.pvBgMeanInt = pvBgMeanInt;
 	}
         
-        public void setPvCellInt(double pvInt) {
-            this.pvInt = pvInt;
+        public void setPvCellMeanInt(double pvMeanInt) {
+            this.pvMeanInt = pvMeanInt;
 	}
         
-        public void setPvCellGFPInt(double pvGFPInt) {
-            this.pvGFPInt = pvGFPInt;
+        public void setGFPBgMeanInt(double GFPBgMeanInt) {
+            this.GFPBgMeanInt = GFPBgMeanInt;
+	}
+        
+        public void setPvCellGFPMeanInt(double pvGFPMeanInt) {
+            this.pvGFPMeanInt = pvGFPMeanInt;
 	}
         
         public void setPvNbGFPFoci(int pvNbGFPFoci) {
@@ -108,12 +116,16 @@ public class Cells_PV {
             this.pvGFPFociVol = pvGFPFociVol;
 	}
         
-        public void setPvGFPFociInt(double pvGFPFociInt) {
-            this.pvGFPFociInt = pvGFPFociInt;
+        public void setPvGFPFociMeanInt(double pvGFPFociMeanInt) {
+            this.pvGFPFociMeanInt = pvGFPFociMeanInt;
 	}
         
-        public void setPvCellDapiInt(double pvDapiInt) {
-            this.pvDapiInt = pvDapiInt;
+        public void setDapiBgMeanInt(double DapiBgMeanInt) {
+            this.DapiBgMeanInt = DapiBgMeanInt;
+	}
+        
+        public void setPvCellDapiMeanInt(double pvDapiMeanInt) {
+            this.pvDapiMeanInt = pvDapiMeanInt;
 	}
         
         public void setPvNbDapiFoci(int pvNbDapiFoci) {
@@ -124,8 +136,8 @@ public class Cells_PV {
             this.pvDapiFociVol = pvDapiFociVol;
 	}
         
-        public void setPvDapiFociInt(double pvDapiFociInt) {
-            this.pvDapiFociInt = pvDapiFociInt;
+        public void setPvDapiFociMeanInt(double pvDapiFociMeanInt) {
+            this.pvDapiFociMeanInt = pvDapiFociMeanInt;
 	}
         
         public void setPnnCellLabel(double pnnLabel) {
@@ -136,12 +148,16 @@ public class Cells_PV {
             this.pnnVol = pnnVol;
 	}
         
-        public void setPnnCellInt(double pnnInt) {
-            this.pnnInt = pnnInt;
+        public void setPnnBgMeanInt(double pnnBgMeanInt) {
+            this.pnnBgMeanInt = pnnBgMeanInt;
 	}
         
-        public void setPnnCellGFPInt(double pnnGFPInt) {
-            this.pnnGFPInt = pnnGFPInt;
+        public void setPnnCellMeanInt(double pnnMeanInt) {
+            this.pnnMeanInt = pnnMeanInt;
+	}
+        
+        public void setPnnCellGFPMeanInt(double pnnGFPMeanInt) {
+            this.pnnGFPMeanInt = pnnGFPMeanInt;
 	}
         
         public void setPnnNbGFPFoci(int pnnNbGFPFoci) {
@@ -152,12 +168,12 @@ public class Cells_PV {
             this.pnnGFPFociVol = pnnGFPFociVol;
 	}
         
-        public void setPnnGFPFociInt(double pnnGFPFociInt) {
-            this.pnnGFPFociInt = pnnGFPFociInt;
+        public void setPnnGFPFociMeanInt(double pnnGFPFociMeanInt) {
+            this.pnnGFPFociMeanInt = pnnGFPFociMeanInt;
 	}
         
-        public void setPnnCellDapiInt(double pnnDapiInt) {
-            this.pnnDapiInt = pnnDapiInt;
+        public void setPnnCellDapiMeanInt(double pnnDapiMeanInt) {
+            this.pnnDapiMeanInt = pnnDapiMeanInt;
 	}
         
         public void setPnnNbDapiFoci(int pnnNbDapiFoci) {
@@ -168,8 +184,8 @@ public class Cells_PV {
             this.pnnDapiFociVol = pnnDapiFociVol;
 	}
         
-        public void setPnnDapiFociInt(double pnnDapiFociInt) {
-            this.pnnDapiFociInt = pnnDapiFociInt;
+        public void setPnnDapiFociMeanInt(double pnnDapiFociMeanInt) {
+            this.pnnDapiFociMeanInt = pnnDapiFociMeanInt;
 	}
         
         public double getPvCellLabel() {
@@ -188,12 +204,20 @@ public class Cells_PV {
             return(pvVol);
 	}
         
-        public double getPvCellInt() {
-            return(pvInt);
+        public double getPvBgMeanInt() {
+            return(pvBgMeanInt);
 	}
         
-        public double getPvCellGFPInt() {
-            return(pvGFPInt);
+        public double getPvCellMeanInt() {
+            return(pvMeanInt);
+	}
+        
+        public double getGFPBgMeanInt() {
+            return(GFPBgMeanInt);
+	}
+        
+        public double getPvCellGFPMeanInt() {
+            return(pvGFPMeanInt);
 	}
         
         public int getPvNbGFPFoci() {
@@ -204,12 +228,16 @@ public class Cells_PV {
             return(pvGFPFociVol);
 	}
         
-        public double getPvGFPFociInt() {
-            return(pvGFPFociInt);
+        public double getPvGFPFociMeanInt() {
+            return(pvGFPFociMeanInt);
 	}
         
-        public double getPvCellDapiInt() {
-            return(pvDapiInt);
+        public double getDapiBgMeanInt() {
+            return(DapiBgMeanInt);
+	}
+        
+        public double getPvCellDapiMeanInt() {
+            return(pvDapiMeanInt);
 	}
         
         public int getPvNbDapiFoci() {
@@ -220,8 +248,8 @@ public class Cells_PV {
             return(pvDapiFociVol);
 	}
         
-        public double getPvFociDapiInt() {
-            return(pvDapiFociInt);
+        public double getPvFociDapiMeanInt() {
+            return(pvDapiFociMeanInt);
 	}
         
         public double getPnnCellLabel() {
@@ -232,12 +260,16 @@ public class Cells_PV {
             return(pnnVol);
 	}
         
-        public double getPnnCellInt() {
-            return(pnnInt);
+        public double getPnnBgMeanInt() {
+            return(pnnBgMeanInt);
 	}
         
-        public double getPnnCellGFPInt() {
-            return(pnnGFPInt);
+        public double getPnnCellMeanInt() {
+            return(pnnMeanInt);
+	}
+        
+        public double getPnnCellGFPMeanInt() {
+            return(pnnGFPMeanInt);
 	}
         
         public int getPnnNbGFPFoci() {
@@ -248,12 +280,12 @@ public class Cells_PV {
             return(pnnGFPFociVol);
 	}
         
-        public double getPnnGFPFociInt() {
-            return(pnnGFPFociInt);
+        public double getPnnGFPFociMeanInt() {
+            return(pnnGFPFociMeanInt);
 	}
         
         public double getPnnCellDapiInt() {
-            return(pnnDapiInt);
+            return(pnnDapiMeanInt);
 	}
         
         public int getPnnNbDapiFoci() {
@@ -264,8 +296,8 @@ public class Cells_PV {
             return(pnnDapiFociVol);
 	}
         
-        public double getPnnDapiFociInt() {
-            return(pnnDapiFociInt);
+        public double getPnnDapiFociMeanInt() {
+            return(pnnDapiFociMeanInt);
 	}
         
 }
