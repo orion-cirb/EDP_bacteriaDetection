@@ -18,7 +18,7 @@ public class Cells_PV {
     private double pvGFPMeanInt;
     private double DapiBgMeanInt;
     private double pvDapiMeanInt;
-    private boolean pvCell_PNN;
+    private int pvCell_PNN;
     private int pvCell_PNNLabel;
     private int pvNbGFPFoci;
     private double pvGFPFociVol;
@@ -41,7 +41,7 @@ public class Cells_PV {
     
    
 	
-	public Cells_PV(double pvLabel, boolean pvCell_PNN, int pvCell_PNNLabel, double pvVol, double pvBgMeanInt, double pvMeanInt, double GFPBgMeanInt,
+	public Cells_PV(double pvLabel, int pvCell_PNN, int pvCell_PNNLabel, double pvVol, double pvBgMeanInt, double pvMeanInt, double GFPBgMeanInt,
                 double pvGFPMeanInt, int pvNbGFPFoci, double pvGFPFociVol, double pvGFPFociMeanInt, double DapiBgMeanInt, double pvDapiMeanInt, 
                 int pvNbDapiFoci, double pvDapiFociVol,double pvDapiFociMeanInt, double pnnLabel, double pnnVol, double pnnMeanInt,
                 double pnnBgMeanInt, double pnnGFPMeanInt, int pnnNbGFPFoci, double pnnGFPFociVol, double pnnGFPFociMeanInt, double pnnDapiMeanInt, int pnnNbDapiFoci, 
@@ -80,7 +80,7 @@ public class Cells_PV {
             this.pvLabel = pvLabel;
 	}
          
-        public void setPvCellIsPNN(boolean pvCell_PNN) {
+        public void setPvCellIsPNN(int pvCell_PNN) {
             this.pvCell_PNN = pvCell_PNN;
 	}
         
@@ -192,7 +192,7 @@ public class Cells_PV {
             return(pvLabel);
 	}
         
-        public boolean getPvIsPNN() {
+        public int getPvIsPNN() {
             return(pvCell_PNN);
 	}
         

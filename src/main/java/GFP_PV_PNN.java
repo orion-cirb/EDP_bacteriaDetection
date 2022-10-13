@@ -172,7 +172,7 @@ public class GFP_PV_PNN implements PlugIn {
 
                 // write cells data
                 for (Cells_PV pvCell : pvCellsList) {
-                    if (pvCell.getPvIsPNN()) {
+                    if (pvCell.getPvIsPNN() != 0) {
                         int PV_PNNLabel = pvCell.getPvCellPNNLabel();
                         Optional<Cells_PV> pvPnnCell = pvCellsList.stream().filter(c -> c.getPnnCellLabel() == PV_PNNLabel).findFirst();
                         Cells_PV pnnCell = pvPnnCell.get();

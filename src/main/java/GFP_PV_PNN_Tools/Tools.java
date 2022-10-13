@@ -8,7 +8,6 @@ import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
-import ij.gui.WaitForUserDialog;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.plugin.Duplicator;
@@ -31,11 +30,9 @@ import loci.formats.FormatException;
 import loci.formats.meta.IMetadata;
 import loci.plugins.util.ImageProcessorReader;
 import mcib3d.geom2.BoundingBox;
-import mcib3d.geom2.Object3DComputation;
 import mcib3d.geom2.Object3DInt;
 import mcib3d.geom2.Objects3DIntPopulation;
 import mcib3d.geom2.Objects3DIntPopulationComputation;
-import mcib3d.geom2.measurements.Measure2Colocalisation;
 import mcib3d.geom2.measurements.MeasureIntensity;
 import mcib3d.geom2.measurements.MeasureVolume;
 import mcib3d.geom2.measurementsPopulation.MeasurePopulationColocalisation;
@@ -44,6 +41,7 @@ import mcib3d.image3d.ImageInt;
 import net.haesleinhuepf.clij.clearcl.ClearCLBuffer;
 import net.haesleinhuepf.clij2.CLIJ2;
 import org.apache.commons.io.FilenameUtils;
+import org.scijava.util.ArrayUtils;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -61,7 +59,7 @@ public class Tools {
     public double minCellVol = 300;
     public double maxCellVol = 5000;
     public double minFociVol = 0.2;
-    public double maxFociVol = 10;
+    public double maxFociVol = 25;
     
     private Object syncObject = new Object();
     private final double stardistPercentileBottom = 0.2;
@@ -70,7 +68,7 @@ public class Tools {
     private final double stardistFociOverlayThresh = 0.25;
     private File modelsPath = new File(IJ.getDirectory("imagej")+File.separator+"models");
     private String stardistOutput = "Label Image"; 
-    private String stardistFociModel = "StandardFluo.zip";
+    private String stardistFociModel = "pmls2.zip";
     
      // Cellpose
     public int cellPoseDiameter = 100;
@@ -133,21 +131,36 @@ public class Tools {
     public ImagePlus median_filter(ImagePlus  img, double sizeXY, double sizeZ) {
         ClearCLBuffer imgCL = clij2.push(img);
         ClearCLBuffer imgCLMed = clij2.create(imgCL);
-        clij2.mean3DBox(imgCL, imgCLMed, sizeXY, sizeXY, sizeZ);
+        clij2.median3DBox(imgCL, imgCLMed, sizeXY, sizeXY, sizeZ);
         clij2.release(imgCL);
         ImagePlus imgMed = clij2.pull(imgCLMed);
         clij2.release(imgCLMed);
         return(imgMed);
     }
+    
+     /**
+     * Difference of Gaussians 
+     * Using CLIJ2
+     * @param imgCL
+     * @param size1
+     * @param size2
+     * @return imgGauss
+     */ 
+    public ImagePlus Dog_filter(ImagePlus img, double size1, double size2) {
+        ClearCLBuffer imgCL = clij2.push(img);
+        ClearCLBuffer imgCLDOG = clij2.create(imgCL);
+        clij2.differenceOfGaussian3D(imgCL, imgCLDOG, size1, size1, size1, size2, size2, size2);
+        clij2.release(imgCL);
+        return(clij2.pull(imgCLDOG));
+    }    
 
    
     /**
     Add cells parameters
     */
-    public void pvCellsParameters (Object3DInt cell, Objects3DIntPopulation pop, ArrayList<Cells_PV> pvCells, ImagePlus img, String cellType, String fociType) {
+    public void pvCellsParameters (Object3DInt cell, Objects3DIntPopulation pop, ArrayList<Cells_PV> pvCells, ImagePlus img, double bg, String cellType, String fociType) {
         double fociVol = 0;
         double fociMeanInt = 0;
-        double bg = findBackground(img);
         for (Object3DInt obj : pop.getObjects3DInt()) {
             fociVol += new MeasureVolume(obj).getVolumeUnit();
             fociMeanInt += new MeasureIntensity(obj, ImageHandler.wrap(img)).getValueMeasurement(MeasureIntensity.INTENSITY_AVG) - bg;
@@ -206,7 +219,7 @@ public class Tools {
                 case "PV" :
                     // check if PV cell label is in arrayList
                     if (pvCells.size() < objLabel) {
-                        cell = new Cells_PV(objLabel, false, 0, cellVol, bg, cellMeanInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                        cell = new Cells_PV(objLabel, 0, 0, cellVol, bg, cellMeanInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                         pvCells.add(cell);
                     }
                     else {
@@ -219,7 +232,7 @@ public class Tools {
                 case "PNN" :
                     // check if PNN cell label is in arrayList
                     if (pvCells.size() < objLabel) {
-                        cell = new Cells_PV(0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, obj.getLabel(), cellVol, bg, cellMeanInt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                        cell = new Cells_PV(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, obj.getLabel(), cellVol, bg, cellMeanInt, 0, 0, 0, 0, 0, 0, 0, 0);
                         pvCells.add(cell);
                     }
                     else {
@@ -238,6 +251,7 @@ public class Tools {
     
     public String[] dialog(String[] chs) {
         String[] models = findStardistModels();
+        int fociIndexModel = ArrayUtils.indexOf(models, stardistFociModel);
         if (IJ.isWindows())
             cellPoseEnvDirPath = System.getProperty("user.home")+"\\miniconda3\\envs\\CellPose";
         GenericDialogPlus gd = new GenericDialogPlus("Parameters");
@@ -252,7 +266,7 @@ public class Tools {
         int pmlModel = Arrays.asList(models).indexOf("pmls2.zip");
         gd.addMessage("--- Stardist model ---", Font.getFont(Font.MONOSPACED), Color.blue);
         if (models.length > 0 && pmlModel >= 0) {
-            gd.addChoice("StarDist dots model :",models, stardistFociModel);
+            gd.addChoice("StarDist dots model :", models, models[fociIndexModel]);
         }
         else {
             gd.addMessage("No StarDist model found in Fiji !!", Font.getFont("Monospace"), Color.red);
@@ -441,6 +455,7 @@ public class Tools {
                 String fociType, ArrayList<Cells_PV> cells) throws IOException{
             Objects3DIntPopulation allFociPop = new Objects3DIntPopulation();
             float fociIndex = 0;
+            double bg = findBackground(img);
             for (Object3DInt cell: cellPop.getObjects3DInt()) {
                 BoundingBox box = cell.getBoundingBox();
                 Roi roiBox = new Roi(box.xmin, box.ymin, box.xmax-box.xmin, box.ymax - box.ymin);
@@ -451,7 +466,7 @@ public class Tools {
                 ImagePlus imgCell = new Duplicator().run(img, box.zmin + 1, box.zmax +1);
                 imgCell.deleteRoi();
                 imgCell.updateAndDraw();
-                ImagePlus imgDog = median_filter(imgCell, 1, 1);
+                ImagePlus imgDog = Dog_filter(imgCell, 2, 3);
 
                 // Go StarDist
                 File starDistModelFile = new File(stardistFociModel);
@@ -474,7 +489,7 @@ public class Tools {
                 Objects3DIntPopulation fociColocPop = findColocCell(cell, fociPopFilterSize);
                 System.out.println(fociColocPop.getNbObjects()+" foci "+fociType+" found in "+cellType+" cell "+cell.getLabel());
                 // add foci info in cell
-                pvCellsParameters(cell, fociColocPop, cells, img, cellType, fociType);
+                pvCellsParameters(cell, fociColocPop, cells, img, bg, cellType, fociType);
                 for (Object3DInt foci: fociColocPop.getObjects3DInt()) {
                     fociIndex++;
                     foci.setLabel(fociIndex);
@@ -643,8 +658,7 @@ public class Tools {
                 for (Object3DInt obj2 : pop2.getObjects3DInt()) {
                     double colocVal = coloc.getValueObjectsPair(obj1, obj2);
                     if (colocVal > 0.25*obj1.size() || (colocVal > 0.25*obj2.size())) {
-                        pvCells.get((int)obj1.getLabel()-1).setPvCellIsPNN(true);
-                        pvCells.get((int)obj1.getLabel()-1).setPvCellPNNLabel((int)obj2.getLabel());
+                        pvCells.get((int)obj1.getLabel()-1).setPvCellIsPNN((int)obj2.getLabel());
                         break;
                     }
                 }
