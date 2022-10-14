@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import loci.common.services.DependencyException;
@@ -117,7 +116,7 @@ public class GFP_PV_PNN implements PlugIn {
                 ImagePlus imgPV = BF.openImagePlus(options)[indexCh];
                 
                 // Find PV cells with cellpose
-                Objects3DIntPopulation pvPop = tools.cellPoseCellsPop(imgPV);
+                Objects3DIntPopulation pvPop = tools.cellPoseCellsPop(imgPV, "PV");
                 int pvCells = pvPop.getNbObjects();
                 System.out.println(pvCells +" PV cells found");
                 
@@ -131,7 +130,7 @@ public class GFP_PV_PNN implements PlugIn {
                 ImagePlus imgPNN = BF.openImagePlus(options)[indexCh];
                 
                 // Find PNN cells with cellpose
-                Objects3DIntPopulation pnnPop = tools.cellPoseCellsPop(imgPNN);
+                Objects3DIntPopulation pnnPop = tools.cellPoseCellsPop(imgPNN, "PNN");
                 int pnnCells = pnnPop.getNbObjects();
                 System.out.println(pnnCells +" PNN cells found");
                 

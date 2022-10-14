@@ -43,8 +43,8 @@ public class Cells_PV {
 	
 	public Cells_PV(double pvLabel, int pvCell_PNN, int pvCell_PNNLabel, double pvVol, double pvBgMeanInt, double pvMeanInt, double GFPBgMeanInt,
                 double pvGFPMeanInt, int pvNbGFPFoci, double pvGFPFociVol, double pvGFPFociMeanInt, double DapiBgMeanInt, double pvDapiMeanInt, 
-                int pvNbDapiFoci, double pvDapiFociVol,double pvDapiFociMeanInt, double pnnLabel, double pnnVol, double pnnMeanInt,
-                double pnnBgMeanInt, double pnnGFPMeanInt, int pnnNbGFPFoci, double pnnGFPFociVol, double pnnGFPFociMeanInt, double pnnDapiMeanInt, int pnnNbDapiFoci, 
+                int pvNbDapiFoci, double pvDapiFociVol,double pvDapiFociMeanInt, double pnnLabel, double pnnVol, double pnnBgMeanInt,
+                double pnnMeanInt, double pnnGFPMeanInt, int pnnNbGFPFoci, double pnnGFPFociVol, double pnnGFPFociMeanInt, double pnnDapiMeanInt, int pnnNbDapiFoci, 
                 double pnnDapiFociVol, double pnnDapiFociMeanInt) {
             this.pvLabel = pvLabel;
             this.pvCell_PNN = pvCell_PNN;

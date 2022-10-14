@@ -307,9 +307,9 @@ public class StarDist2D extends StarDist2DBase implements Command {
         ImageHandler img1 = ImageInt.wrap(ref);
         ImageHandler img2 = ImageInt.wrap(ip);
         TrackingAssociation association = new TrackingAssociation(img1, img2, maxBB, minColoc);
-        //association.setMaxLabel(max);
+        association.setMaxLabel(max);
         ImageHandler trackedImage = association.getTrackedImage();
-        //max = association.getMaxLabel();
+        max = association.getMaxLabel();
         return trackedImage.getImagePlus();
     }
     

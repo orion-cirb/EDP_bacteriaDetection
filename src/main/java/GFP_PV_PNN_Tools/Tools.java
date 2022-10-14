@@ -8,6 +8,7 @@ import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
+import ij.gui.WaitForUserDialog;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.plugin.Duplicator;
@@ -58,24 +59,24 @@ public class Tools {
     public boolean canceled = false;
     public double minCellVol = 300;
     public double maxCellVol = 5000;
-    public double minFociVol = 0.2;
-    public double maxFociVol = 25;
+    public double minFociVol = 0.02;
+    public double maxFociVol = 20;
     
     private Object syncObject = new Object();
     private final double stardistPercentileBottom = 0.2;
     private final double stardistPercentileTop = 99.8;
-    private final double stardistFociProbThresh = 0.8;
+    private final double stardistFociProbThresh = 0.05;
     private final double stardistFociOverlayThresh = 0.25;
     private File modelsPath = new File(IJ.getDirectory("imagej")+File.separator+"models");
     private String stardistOutput = "Label Image"; 
     private String stardistFociModel = "pmls2.zip";
     
      // Cellpose
-    public int cellPoseDiameter = 100;
+    public int cellPosePVDiameter = 100;
+    public int cellPosePNNDiameter = 100;
     private boolean useGpu = true;
-    private String[] cellposeModels = {"cyto","nuclei","tissuenet","livecell", "cyto2", "general","CP", "CPx", "TN1", "TN2", "TN3", "LC1",
-        "LC2", "LC3", "LC4"};
-    public String cellposeModel = "";
+    public String cellposePVModel = "cyto2";
+    public String cellposePNNModel = "CPx";
     private String cellPoseEnvDirPath = "/home/phm/.conda/envs/cellpose";
     
     public String[] channelNames = {"PV", "PNN", "GFP", "DAPI"};
@@ -274,7 +275,6 @@ public class Tools {
         }
         gd.addMessage("Cells detection", Font.getFont("Monospace"), Color.blue);
         gd.addDirectoryField("Cellpose environment path : ", cellPoseEnvDirPath);
-        gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
         gd.addNumericField("min cell volume : ", minCellVol);
         gd.addNumericField("max cell volume : ", maxCellVol);
         gd.addMessage("Foci size filter", Font.getFont("Monospace"), Color.blue);
@@ -299,7 +299,6 @@ public class Tools {
             return(null);
         }
         cellPoseEnvDirPath = gd.getNextString();
-        cellposeModel = gd.getNextChoice();
         minCellVol = gd.getNextNumber();
         maxCellVol = gd.getNextNumber();
         minFociVol = gd.getNextNumber();
@@ -461,22 +460,26 @@ public class Tools {
                 Roi roiBox = new Roi(box.xmin, box.ymin, box.xmax-box.xmin, box.ymax - box.ymin);
                 img.setRoi(roiBox);
                 img.updateAndDraw();
-                
+               
                 // Crop image
                 ImagePlus imgCell = new Duplicator().run(img, box.zmin + 1, box.zmax +1);
                 imgCell.deleteRoi();
                 imgCell.updateAndDraw();
-                ImagePlus imgDog = Dog_filter(imgCell, 2, 3);
-
+                float factor = 0.5f;
+                ImagePlus imgResize = imgCell.resize((int)(imgCell.getWidth()*factor), (int)(imgCell.getHeight()*factor), 1, "none");
+                flush_close(imgCell);
+                ImagePlus imgMed = median_filter(imgResize, 1, 1);
+                flush_close(imgResize);
+                
                 // Go StarDist
                 File starDistModelFile = new File(stardistFociModel);
                 StarDist2D star = new StarDist2D(syncObject, starDistModelFile);
-                star.loadInput(imgDog);
+                star.loadInput(imgMed);
                 star.setParams(stardistPercentileBottom, stardistPercentileTop, stardistFociProbThresh, stardistFociOverlayThresh, stardistOutput);
                 star.run();
-                
+                flush_close(imgMed);
                 // label in 3D
-                ImagePlus imgLabels = star.associateLabels();
+                ImagePlus imgLabels = star.associateLabels().resize((int)(imgCell.getWidth()), (int)(imgCell.getHeight()), 1, "none");
                 imgLabels.setCalibration(cal);
                 ImageInt label3D = ImageInt.wrap(imgLabels);
                 Objects3DIntPopulation fociPop = popFilterOneZ(new Objects3DIntPopulation(label3D));
@@ -496,9 +499,8 @@ public class Tools {
                     foci.setType((int)cell.getLabel());
                     allFociPop.addObject(foci);
                 }
-                flush_close(imgCell);
                 flush_close(imgLabels);
-                flush_close(imgDog);
+                
             }
             return(allFociPop);
         }
@@ -549,7 +551,9 @@ public class Tools {
  * @param img
  * @return 
  */
-    public Objects3DIntPopulation cellPoseCellsPop(ImagePlus imgCell){
+    public Objects3DIntPopulation cellPoseCellsPop(ImagePlus imgCell, String cellType){
+        String cellposeModel = (cellType.equals("PV")) ? cellposePVModel : cellposePNNModel;
+        int cellposeDiameter = (cellType.equals("PV")) ? cellPosePVDiameter : cellPosePNNDiameter;
         ImagePlus imgIn = null;
         // resize to be in a friendly scale
         int width = imgCell.getWidth();
@@ -563,7 +567,7 @@ public class Tools {
         else
             imgIn = new Duplicator().run(imgCell);
         imgIn.setCalibration(cal);
-        CellposeTaskSettings settings = new CellposeTaskSettings(cellposeModel, 1, cellPoseDiameter, cellPoseEnvDirPath);
+        CellposeTaskSettings settings = new CellposeTaskSettings(cellposeModel, 1, cellposeDiameter, cellPoseEnvDirPath);
         settings.setStitchThreshold(0.25); 
         settings.useGpu(true);
         CellposeSegmentImgPlusAdvanced cellpose = new CellposeSegmentImgPlusAdvanced(settings, imgIn);

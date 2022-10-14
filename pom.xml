@@ -97,12 +97,12 @@
                 <version>20120621</version>
                 <type>jar</type>
             </dependency>
-            <dependency>
-		<groupId>org.framagit.mcib3d</groupId>
-		<artifactId>mcib3d-core</artifactId>
-		<version>4.0.93</version>		
-            </dependency>
-
+	 <dependency>
+	  <groupId>mcib</groupId>
+	  <artifactId>mcib3d-core</artifactId>
+	  <version>4.0.93</version>
+	  <type>jar</type>
+	 </dependency>
 	</dependencies>
         <repositories>
             <repository>
