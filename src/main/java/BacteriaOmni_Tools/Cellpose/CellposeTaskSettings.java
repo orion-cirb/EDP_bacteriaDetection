@@ -1,4 +1,4 @@
-package Cellpose;
+package BacteriaOmni_Tools.Cellpose;
 
 
 public class CellposeTaskSettings {
@@ -22,7 +22,9 @@ public class CellposeTaskSettings {
     boolean useFastMode = false;
     boolean useResample = false;
     boolean omni = false;
+    boolean invert = false;
     boolean cluster = false;
+    boolean useMxnet = true;
     boolean verbose = false;
     
     
@@ -107,9 +109,19 @@ public class CellposeTaskSettings {
         this.useResample = useResample;
         return this;
     }
+    
+    public CellposeTaskSettings useMxNet(boolean useMxnet) {
+        this.useMxnet = useMxnet;
+        return this;
+    }
 
     public CellposeTaskSettings setOmni(boolean omni) {
         this.omni = omni;
+        return this;
+    }
+
+    public CellposeTaskSettings setInvert(boolean invert) {
+        this.invert = invert;
         return this;
     }
 

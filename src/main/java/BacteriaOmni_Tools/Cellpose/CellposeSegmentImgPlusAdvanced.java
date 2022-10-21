@@ -1,20 +1,13 @@
-package Cellpose;
+package BacteriaOmni_Tools.Cellpose;
 
-import Cellpose.CellposeTaskSettings;
-import Cellpose.CellposeTask;
+import BacteriaOmni_Tools.Cellpose.CellposeTask;
 import ij.IJ;
 import ij.ImagePlus;
-import ij.ImageStack;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.plugin.Concatenator;
 import ij.plugin.Duplicator;
 import ij.process.ImageConverter;
-import net.imagej.ImageJ;
-import org.scijava.ItemIO;
-import org.scijava.command.Command;
-import org.scijava.plugin.Parameter;
-import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.util.ArrayList;

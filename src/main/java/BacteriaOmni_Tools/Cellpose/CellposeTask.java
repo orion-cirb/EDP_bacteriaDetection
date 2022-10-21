@@ -1,6 +1,6 @@
-package Cellpose;
+package BacteriaOmni_Tools.Cellpose;
 
-import Cellpose.CellposeTaskSettings;
+import BacteriaOmni_Tools.Cellpose.CellposeTaskSettings;
 import java.util.ArrayList;
 
 public class CellposeTask {
@@ -57,6 +57,9 @@ public class CellposeTask {
                 options.add("--cluster");
         }
         
+        if (settings.invert) 
+            options.add("--invert");
+        
         if (settings.use3D) 
             options.add("--do_3D");
         
@@ -71,11 +74,13 @@ public class CellposeTask {
         
         if (settings.verbose)
             options.add("--verbose");
-
+        
+        if (settings.useMxnet)
+            options.add("--Mxnet");
+        
         options.add("--save_tif");
 
         options.add("--no_npy");
-        
         
         Cellpose.execute(options, settings, null);
     }
