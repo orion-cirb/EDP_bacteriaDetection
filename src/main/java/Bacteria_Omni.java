@@ -49,15 +49,12 @@ public class Bacteria_Omni implements PlugIn {
             }   
             // Find images with extension
             String file_ext = tools.findImageType(new File(imageDir));
-            System.out.println("file extention " + file_ext);
-            
             ArrayList<String> imageFiles = new ArrayList();
             tools.findImages(imageDir, file_ext, imageFiles);
             if (imageFiles.isEmpty()) {
                 IJ.showMessage("Error", "No images found with " + file_ext + " extension");
                 return;
             }
-            System.out.println(imageFiles);
             
             // Create output folder
             outDirResults = imageDir + File.separator + "Results" + File.separator;
@@ -66,7 +63,7 @@ public class Bacteria_Omni implements PlugIn {
                 outDir.mkdir();
             }
             // Write header in results file
-            String header = "Image name\tFocused slice\tNb bacteria\tBacteria total area (µm2)\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std\n";
+            String header = "Parent folder\tImage name\tFocused slice\tNb bacteria\tBacteria total area (µm2)\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std\n";
             FileWriter fwResults = new FileWriter(outDirResults + "results.xls", false);
             results = new BufferedWriter(fwResults);
             results.write(header);
@@ -94,7 +91,8 @@ public class Bacteria_Omni implements PlugIn {
             for (String f : imageFiles) {
                 reader.setId(f);
                 String rootName = FilenameUtils.getBaseName(f);
-                tools.print("--- ANALYZING IMAGE " + rootName + " ------");
+                String parentFolder = f.replace(imageDir, "").replace(FilenameUtils.getName(f), "");
+                tools.print("--- ANALYZING IMAGE " + parentFolder + rootName + " ------");
                 
                 ImporterOptions options = new ImporterOptions();
                 options.setId(f);
@@ -122,10 +120,10 @@ public class Bacteria_Omni implements PlugIn {
                 
                 // Save results
                 tools.print("- Saving results -");
-                tools.saveResults(bactPop, focusedSlice, rootName, results);
+                tools.saveResults(bactPop, focusedSlice, rootName, parentFolder, results);
                 
                 // Save images
-                tools.drawResults(img, bactPop, rootName, outDirResults);
+                tools.drawResults(img, bactPop, rootName, parentFolder, outDirResults);
                 tools.flush_close(img);
             }
         

@@ -133,22 +133,16 @@ public class Tools {
      * Find images in folder
      */
     public void findImages(String imagesFolder, String imageExt, ArrayList<String> imageFiles) {
-        System.out.println(imagesFolder);
         File inDir = new File(imagesFolder);
         File[] files = inDir.listFiles();
-        System.out.println(files);
         
         for (File file: files) {
             if(file.isFile()) {
-                System.out.println("abc");
                 String fileExt = FilenameUtils.getExtension(file.getName());
                 if (fileExt.equals(imageExt) && !file.getName().startsWith("."))
                     imageFiles.add(file.getAbsolutePath());
-                    System.out.println("youhou");
             } else if (file.isDirectory() && !file.getName().equals("Results")) {
-                System.out.println("def");
                 findImages(file.getAbsolutePath(), imageExt, imageFiles);
-                System.out.println("hou");
             }
         }
         Collections.sort(imageFiles);
@@ -251,7 +245,7 @@ public class Tools {
     /**
      * Compute bacteria parameters and save them in file
      */
-    public void saveResults(Objects3DIntPopulation pop, String focusedSlice, String imgName, BufferedWriter file) throws IOException {
+    public void saveResults(Objects3DIntPopulation pop, String focusedSlice, String imgName, String parentFolder, BufferedWriter file) throws IOException {
         DescriptiveStatistics areas = new DescriptiveStatistics();
         DescriptiveStatistics lengths = new DescriptiveStatistics();
         for (Object3DInt obj : pop.getObjects3DInt()) {
@@ -265,26 +259,26 @@ public class Tools {
         double stdArea = areas.getStandardDeviation();
         double meanLength = lengths.getMean();
         double stdlength = lengths.getStandardDeviation();
-        file.write(imgName+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+totalArea+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
+        file.write(parentFolder+"\t"+imgName+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+totalArea+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
         file.flush();
     }
     
     
     // Save objects image
-    public void drawResults(ImagePlus img, Objects3DIntPopulation pop, String imgName, String outDir) {
+    public void drawResults(ImagePlus img, Objects3DIntPopulation pop, String imgName, String parentFolder, String outDir) {
         ImageHandler imgOut1 = ImageHandler.wrap(img).createSameDimensions();
         pop.drawInImage(imgOut1);
         IJ.run(imgOut1.getImagePlus(), "glasbey on dark", "");
         imgOut1.getImagePlus().setCalibration(cal);
         FileSaver ImgObjectsFile = new FileSaver(imgOut1.getImagePlus());
-        ImgObjectsFile.saveAsTiff(outDir+imgName+"_detections.tif");
+        ImgObjectsFile.saveAsTiff(outDir+parentFolder.replace(File.separator, "_")+imgName+"_detections.tif");
         
         IJ.run(img, "Invert", "");
         ImagePlus[] imgColors2 = {imgOut1.getImagePlus(), null, null, img};
         ImagePlus imgOut2 = new RGBStackMerge().mergeHyperstacks(imgColors2, true);
         imgOut2.setCalibration(cal);
         FileSaver ImgObjectsFile2 = new FileSaver(imgOut2);
-        ImgObjectsFile2.saveAsTiff(outDir + imgName + "_overlay.tif");
+        ImgObjectsFile2.saveAsTiff(outDir+parentFolder.replace(File.separator, "_")+imgName+"_overlay.tif");
 
         flush_close(imgOut1.getImagePlus());
         flush_close(imgOut2);
