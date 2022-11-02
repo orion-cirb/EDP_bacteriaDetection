@@ -1,6 +1,5 @@
 package BacteriaOmni_Tools;
 
-
 import BacteriaOmni_Tools.Cellpose.CellposeTaskSettings;
 import BacteriaOmni_Tools.Cellpose.CellposeSegmentImgPlusAdvanced;
 import ij.IJ;
@@ -8,287 +7,287 @@ import ij.ImagePlus;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.plugin.Duplicator;
+import fiji.util.gui.GenericDialogPlus;
+import ij.plugin.RGBStackMerge;
+import ij.process.ImageProcessor;
+import java.awt.Color;
+import java.awt.Font;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.stream.Collectors;
 import javax.swing.ImageIcon;
-import loci.common.services.DependencyException;
-import loci.common.services.ServiceException;
-import loci.formats.FormatException;
-import loci.formats.meta.IMetadata;
-import loci.plugins.util.ImageProcessorReader;
 import mcib3d.geom2.Object3DInt;
 import mcib3d.geom2.Objects3DIntPopulation;
 import mcib3d.geom2.Objects3DIntPopulationComputation;
 import mcib3d.geom2.VoxelInt;
 import mcib3d.geom2.measurements.MeasureFeret;
-import mcib3d.geom2.measurements.MeasureIntensity;
-import mcib3d.geom2.measurements.MeasureSurface;
 import mcib3d.geom2.measurements.MeasureVolume;
 import mcib3d.image3d.ImageHandler;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 /**
- *
- * @author phm
+ * @author Orion-CIRB
  */
 public class Tools {
-
+    private final ImageIcon icon = new ImageIcon(this.getClass().getResource("/Orion_icon.png"));
     public boolean canceled = false;
-    public double minBactVol = 10;
-    public double maxBactVol = 300;
+    public Calibration cal;
+    public double pixelWidth = 0.202;
+    //public double pixelDepth = 0.360;
     
      // Omnipose
-    public int omniPoseDiameter = 0;
+    private String omniposeEnvDirPath = "/opt/miniconda3/envs/omnipose";
+    private String omniposeModelsPath = "/home/heloise/.cellpose/models/";
+    public String omniposeModel = "bact_phase_omnitorch_0";
+    public int omniposeDiameter = 0;
+    public int omniposeMaskThreshold = 0;
+    public double omniposeFlowThreshold = 0;
     private boolean useGpu = true;
-    private String omniPoseEnvDirPath = "/home/phm/.conda/envs/omnipose";
-    private String omniPoseModelsPath = "/home/phm/.cellpose/models/";
-    public String omniPoseModel = omniPoseModelsPath+"bact_phase_omnitorch_0";
-    public Calibration cal;
-    public double pixVol= 1;
-    private final ImageIcon icon = new ImageIcon(this.getClass().getResource("/Orion_icon.png"));
+    
+    // Bacteria
+    public double minBactSurface = 0.5;
+    public double maxBactSurface = 10;
+    
 
-     
-    // Flush and close images
+    
+    /**
+     * Display a message in the ImageJ console and status bar
+     */
+    public void print(String log) {
+        System.out.println(log);
+        IJ.showStatus(log);
+    }
+    
+    
+    /**
+     * Check that needed modules are installed
+     */
+    public boolean checkInstalledModules() {
+        ClassLoader loader = IJ.getClassLoader();
+        try {
+            loader.loadClass("mcib3d.geom.Object3D");
+        } catch (ClassNotFoundException e) {
+            IJ.showMessage("Error", "3D ImageJ Suite not installed, please install from update site");
+            return false;
+        }
+        return true;
+    }
+    
+    
+    /**
+     * Flush and close an image
+     */
     public void flush_close(ImagePlus img) {
         img.flush();
         img.close();
     }
-
     
-/**
-     * Find images in folder
-     * @param imagesFolder
-     * @param imageExt
-     * @return 
-     */
-    public ArrayList<String> findImages(String imagesFolder, String imageExt) {
-        File inDir = new File(imagesFolder);
-        String[] files = inDir.list();
-        if (files == null) {
-            System.out.println("No Image found in "+imagesFolder);
-            return null;
-        }
-        ArrayList<String> images = new ArrayList();
-        for (String f : files) {
-            // Find images with extension
-            String fileExt = FilenameUtils.getExtension(f);
-            if (fileExt.equals(imageExt))
-                images.add(imagesFolder + File.separator + f);
-        }
-        Collections.sort(images);
-        return(images);
-    }
     
-     /**
-     * Find image type
+    /**
+     * Find images extension
      */
     public String findImageType(File imagesFolder) {
         String ext = "";
-        String[] files = imagesFolder.list();
-        for (String name : files) {
-            String fileExt = FilenameUtils.getExtension(name);
-            switch (fileExt) {
-               case "nd" :
-                   ext = fileExt;
-                   break;
-                case "czi" :
-                   ext = fileExt;
-                   break;
-                case "lif"  :
-                    ext = fileExt;
-                    break;
-                case "isc2" :
-                    ext = fileExt;
-                    break;
-                case "tif" :
-                    ext = fileExt;
+        File[] files = imagesFolder.listFiles();
+        for (File file: files) {
+            if(file.isFile()) {
+                String fileExt = FilenameUtils.getExtension(file.getName());
+                switch (fileExt) {
+                   case "nd" :
+                       ext = fileExt;
+                       break;
+                    case "czi" :
+                       ext = fileExt;
+                       break;
+                    case "lif"  :
+                        ext = fileExt;
+                        break;
+                    case "ics2" :
+                        ext = fileExt;
+                        break;
+                    case "tif" :
+                        ext = fileExt;
+                        break;
+                    case "tiff" :
+                        ext = fileExt;
+                        break;
+                }
+            } else if (file.isDirectory() && !file.getName().equals("Results")) {
+                ext = findImageType(file);
+                if (! ext.equals(""))
                     break;
             }
         }
         return(ext);
     }
-    
-     /**
-     * Find image calibration
-     * @param meta
-     * @return 
-     */
-    public Calibration findImageCalib(IMetadata meta) {
-        cal = new Calibration();  
-        // read image calibration
-        cal.pixelWidth = meta.getPixelsPhysicalSizeX(0).value().doubleValue();
-        cal.pixelHeight = cal.pixelWidth;
-        if (meta.getPixelsPhysicalSizeZ(0) != null)
-            cal.pixelDepth = meta.getPixelsPhysicalSizeZ(0).value().doubleValue();
-        else
-            cal.pixelDepth = 1;
-        cal.setUnit("microns");
-        return(cal);
-    }
-    
-    
-     /**
-     * Find channels name
-     * @param imageName
-     * @return 
-     * @throws loci.common.services.DependencyException
-     * @throws loci.common.services.ServiceException
-     * @throws loci.formats.FormatException
-     * @throws java.io.IOException
-     */
-    public String[] findChannels (String imageName, IMetadata meta, ImageProcessorReader reader) throws DependencyException, ServiceException, FormatException, IOException {
-        int chs = reader.getSizeC();
-        String[] channels = new String[chs];
-        String imageExt =  FilenameUtils.getExtension(imageName);
-        switch (imageExt) {
-            case "nd" :
-                for (int n = 0; n < chs; n++) 
-                {
-                    if (meta.getChannelID(0, n) == null)
-                        channels[n] = Integer.toString(n);
-                    else 
-                        channels[n] = meta.getChannelName(0, n).toString();
-                }
-                break;
-            case "lif" :
-                for (int n = 0; n < chs; n++) 
-                    if (meta.getChannelID(0, n) == null || meta.getChannelName(0, n) == null)
-                        channels[n] = Integer.toString(n);
-                    else 
-                        channels[n] = meta.getChannelName(0, n).toString();
-                break;
-            case "czi" :
-                for (int n = 0; n < chs; n++) 
-                    if (meta.getChannelID(0, n) == null)
-                        channels[n] = Integer.toString(n);
-                    else 
-                        channels[n] = meta.getChannelFluor(0, n).toString();
-                break;
-            case "ics" :
-                for (int n = 0; n < chs; n++) 
-                    if (meta.getChannelID(0, n) == null)
-                        channels[n] = Integer.toString(n);
-                    else 
-                        channels[n] = meta.getChannelExcitationWavelength(0, n).value().toString();
-                break;    
-            default :
-                for (int n = 0; n < chs; n++)
-                    channels[n] = Integer.toString(n);
-        }
-        return(channels);         
-    }
-    
-        
-     /**
-     * Find volume of objects  
-     * @param dotsPop
-     * @return vol
-     */
-    
-    public double findPopVolume (Objects3DIntPopulation dotsPop) {
-        IJ.showStatus("Findind object's volume");
-        List<Double[]> results = dotsPop.getMeasurementsList(new MeasureVolume().getNamesMeasurement());
-        double sum = results.stream().map(arr -> arr[1]).reduce(0.0, Double::sum);
-        return(sum);
-    }
+     
     
     /**
-     * Find intensity of objects  
-     * @param dotsPop
-     * @return intensity
+     * Find images in folder
      */
-    
-    public double findPopIntensity (Objects3DIntPopulation dotsPop, ImagePlus img) {
-        IJ.showStatus("Findind object's intensity");
-        ImageHandler imh = ImageHandler.wrap(img);
-        double sumInt = 0;
-        for(Object3DInt obj : dotsPop.getObjects3DInt()) {
-            MeasureIntensity intMes = new MeasureIntensity(obj, imh);
-            sumInt +=  intMes.getValueMeasurement(MeasureIntensity.INTENSITY_SUM);
+    public void findImages(String imagesFolder, String imageExt, ArrayList<String> imageFiles) {
+        System.out.println(imagesFolder);
+        File inDir = new File(imagesFolder);
+        File[] files = inDir.listFiles();
+        System.out.println(files);
+        
+        for (File file: files) {
+            if(file.isFile()) {
+                System.out.println("abc");
+                String fileExt = FilenameUtils.getExtension(file.getName());
+                if (fileExt.equals(imageExt) && !file.getName().startsWith("."))
+                    imageFiles.add(file.getAbsolutePath());
+                    System.out.println("youhou");
+            } else if (file.isDirectory() && !file.getName().equals("Results")) {
+                System.out.println("def");
+                findImages(file.getAbsolutePath(), imageExt, imageFiles);
+                System.out.println("hou");
+            }
         }
-        return(sumInt);
+        Collections.sort(imageFiles);
+    }
+    
+    
+    /**
+     * Generate dialog box
+     */
+    public void dialog() {     
+        GenericDialogPlus gd = new GenericDialogPlus("Parameters");
+        gd.setInsets​(0, 80, 0);
+        gd.addImage(icon);
+        
+        gd.addMessage("Bacteria detection", Font.getFont("Monospace"), Color.blue);
+        if (IJ.isWindows()) {
+            omniposeEnvDirPath = System.getProperty("user.home")+"\\miniconda3\\envs\\omnipose";
+            omniposeModelsPath = System.getProperty("user.home")+"\\.cellpose\\models\\";
+        }
+        gd.addDirectoryField("Omnipose environment directory: ", omniposeEnvDirPath);
+        gd.addDirectoryField("Omnipose models path: ", omniposeModelsPath); 
+        gd.addNumericField("Min bacterium surface (µm2): ", minBactSurface);
+        gd.addNumericField("Max bacterium surface (µm2): ", maxBactSurface);
+        
+        gd.addMessage("Image calibration", Font.getFont("Monospace"), Color.blue);
+        gd.addNumericField("XY calibration (µm):", pixelWidth);
+        gd.showDialog();
+        
+        omniposeEnvDirPath = gd.getNextString();
+        omniposeModelsPath = gd.getNextString();
+        minBactSurface = (float) gd.getNextNumber();
+        maxBactSurface = (float) gd.getNextNumber();
+        pixelWidth = gd.getNextNumber();
+        
+        if(gd.wasCanceled())
+           canceled = true;
+    }
+    
+    
+    /**
+     * Set image calibration
+     */
+    public void setImageCalib() {
+        cal = new Calibration();
+        cal.pixelWidth = pixelWidth;
+        cal.pixelHeight = pixelWidth;
+        cal.setUnit("microns");
+        System.out.println("XY calibration = " + cal.pixelWidth);
     }
     
    
- /**
- * Find Bacteria with omnipose
- * @param img
- * @return 
- */
-    public Objects3DIntPopulation omniPoseBactsPop(ImagePlus imgBact){
+    /**
+    * Detect bacteria with Omnipose
+    */
+    public Objects3DIntPopulation omniposeDetection(ImagePlus imgBact){
+        
+        // Resize to be in a Omnipose-friendly scale
         ImagePlus imgIn = null;
-        // resize to be in a friendly scale
-        int width = imgBact.getWidth();
-        int height = imgBact.getHeight();
-        float factor = 0.5f;
-        boolean resized = false;
-        if (imgBact.getWidth() > 1024) {
-            imgIn = imgBact.resize((int)(width*factor), (int)(height*factor), 1, "none");
-            resized = true;
-        }
-        else
+        boolean resize = false;
+        if (imgBact.getWidth() < 500) {
+            float factor = 2f;
+            imgIn = imgBact.resize((int)(imgBact.getWidth()*factor), (int)(imgBact.getHeight()*factor), 1, "bicubic");
+            resize = true;
+        } else {
             imgIn = new Duplicator().run(imgBact);
+        }
         imgIn.setCalibration(cal);
-        CellposeTaskSettings settings = new CellposeTaskSettings(omniPoseModel, 1, omniPoseDiameter, omniPoseEnvDirPath);
-        settings.setStitchThreshold(0.25); 
-        settings.useGpu(true);
+        
+        // Set Omnipose settings
+        CellposeTaskSettings settings = new CellposeTaskSettings(omniposeModelsPath+omniposeModel, 1, omniposeDiameter, omniposeEnvDirPath);
+        settings.setVersion("0.7");
         settings.setCluster(true);
         settings.setOmni(true);
-        settings.setVerbose(true);
         settings.useMxNet(false);
-        settings.setInvert(false);
-        settings.setVersion("0.7");
+        settings.setCellProbTh(omniposeMaskThreshold);
+        settings.setFlowTh(omniposeFlowThreshold);
+        settings.useGpu(useGpu);
+        
+        // Run Omnipose
         CellposeSegmentImgPlusAdvanced cellpose = new CellposeSegmentImgPlusAdvanced(settings, imgIn);
-        ImagePlus cellpose_img = cellpose.run();
-        ImagePlus cells_img = (resized) ? cellpose_img.resize(width, height, 1, "none") : cellpose_img;
-        cells_img.setCalibration(cal);
-        Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(cells_img));
-        Objects3DIntPopulation excludeBorders = new Objects3DIntPopulationComputation(pop).getExcludeBorders(ImageHandler.wrap(cells_img), false);
-        Objects3DIntPopulation cellFilterPop = new Objects3DIntPopulationComputation(excludeBorders).getFilterSize(minBactVol/pixVol, maxBactVol/pixVol);
+        ImagePlus imgOut = cellpose.run();
+        
+        ImageProcessor imgOutProc = (resize) ? imgOut.getProcessor().resize(imgBact.getWidth(), imgBact.getHeight(), false) : imgOut.getProcessor();
+        imgOut = new ImagePlus("", imgOutProc);
+        imgOut.setCalibration(cal);
+        
+        Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(imgOut));
+        Objects3DIntPopulation excludeBorders = new Objects3DIntPopulationComputation(pop).getExcludeBorders(ImageHandler.wrap(imgOut), false);
+        Objects3DIntPopulation cellFilterPop = new Objects3DIntPopulationComputation(excludeBorders).getFilterSize(minBactSurface/(pixelWidth*pixelWidth), maxBactSurface/(pixelWidth*pixelWidth));
         cellFilterPop.resetLabels();
-        flush_close(cells_img);
+        
+        // Close images
         flush_close(imgIn);
-        flush_close(cellpose_img);
+        flush_close(imgOut);
+        
         return(cellFilterPop);
     }
     
-    // Save objects image
-    public void saveObjects (ImagePlus img, Objects3DIntPopulation pop, String imageName) {
-        ImageHandler imgObjects = ImageHandler.wrap(img).createSameDimensions();
-        pop.drawInImage(imgObjects);
-        IJ.run(imgObjects.getImagePlus(),"glasbey on dark","");
-        FileSaver ImgObjectsFile = new FileSaver(imgObjects.getImagePlus());
-        ImgObjectsFile.saveAsTiff(imageName);
-        flush_close(imgObjects.getImagePlus());
-    }
-    
-    // wrtite parameters
-    public void write_parameters(Objects3DIntPopulation bactPop, String imageName, BufferedWriter fwBacts) throws IOException {
-        DescriptiveStatistics area = new DescriptiveStatistics();
-        DescriptiveStatistics length = new DescriptiveStatistics();
-        for (Object3DInt obj : bactPop.getObjects3DInt()) {
-            area.addValue(new MeasureSurface(obj).getValueMeasurement(MeasureSurface.SURFACE_UNIT));
+  
+    /**
+     * Compute bacteria parameters and save them in file
+     */
+    public void saveResults(Objects3DIntPopulation pop, String focusedSlice, String imgName, BufferedWriter file) throws IOException {
+        DescriptiveStatistics areas = new DescriptiveStatistics();
+        DescriptiveStatistics lengths = new DescriptiveStatistics();
+        for (Object3DInt obj : pop.getObjects3DInt()) {
+            areas.addValue(new MeasureVolume(obj).getVolumeUnit());
             VoxelInt feret1Unit = new MeasureFeret(obj).getFeret1Unit();
             VoxelInt feret2Unit = new MeasureFeret(obj).getFeret2Unit();
-            length.addValue(feret1Unit.distance(feret2Unit));
+            lengths.addValue(feret1Unit.distance(feret2Unit));
         }
-        double meanArea = area.getMean();
-        double stdArea = area.getStandardDeviation();
-        double meanLength = length.getMean();
-        double stdlength = length.getStandardDeviation();
-        fwBacts.write(imageName+"\t"+bactPop.getNbObjects()+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
-        fwBacts.flush();
+        double totalArea = areas.getSum();
+        double meanArea = areas.getMean();
+        double stdArea = areas.getStandardDeviation();
+        double meanLength = lengths.getMean();
+        double stdlength = lengths.getStandardDeviation();
+        file.write(imgName+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+totalArea+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
+        file.flush();
+    }
+    
+    
+    // Save objects image
+    public void drawResults(ImagePlus img, Objects3DIntPopulation pop, String imgName, String outDir) {
+        ImageHandler imgOut1 = ImageHandler.wrap(img).createSameDimensions();
+        pop.drawInImage(imgOut1);
+        IJ.run(imgOut1.getImagePlus(), "glasbey on dark", "");
+        imgOut1.getImagePlus().setCalibration(cal);
+        FileSaver ImgObjectsFile = new FileSaver(imgOut1.getImagePlus());
+        ImgObjectsFile.saveAsTiff(outDir+imgName+"_detections.tif");
+        
+        IJ.run(img, "Invert", "");
+        ImagePlus[] imgColors2 = {imgOut1.getImagePlus(), null, null, img};
+        ImagePlus imgOut2 = new RGBStackMerge().mergeHyperstacks(imgColors2, true);
+        imgOut2.setCalibration(cal);
+        FileSaver ImgObjectsFile2 = new FileSaver(imgOut2);
+        ImgObjectsFile2.saveAsTiff(outDir + imgName + "_overlay.tif");
+
+        flush_close(imgOut1.getImagePlus());
+        flush_close(imgOut2);
     }
     
 }

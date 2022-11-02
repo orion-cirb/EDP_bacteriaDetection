@@ -1,10 +1,7 @@
-/*
- * Find bacteria with OmniPose
- */
-
+import BacteriaOmni_Tools.Find_focused_slices;
 import BacteriaOmni_Tools.Tools;
 import ij.*;
-import ij.io.FileSaver;
+import ij.gui.WaitForUserDialog;
 import ij.plugin.PlugIn;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -25,93 +22,116 @@ import loci.plugins.BF;
 import loci.plugins.util.ImageProcessorReader;
 import loci.plugins.in.ImporterOptions;
 import mcib3d.geom2.Objects3DIntPopulation;
-import mcib3d.image3d.ImageHandler;
 import org.apache.commons.io.FilenameUtils;
 
 
-
+/**
+ * Detect bacteria with OmniPose
+ * @author Orion-CIRB
+ */
 public class Bacteria_Omni implements PlugIn {
     
     Tools tools = new Tools();
-    
     private String imageDir = "";
     public String outDirResults = "";
-    private boolean canceled = false;
-    public BufferedWriter bacts_results_analyze;
+    public BufferedWriter results;
    
     
-    /**
-     * 
-     * @param arg
-     */
-    @Override
     public void run(String arg) {
         try {
+            if (!tools.checkInstalledModules()) {
+                return;
+            } 
+            
             imageDir = IJ.getDirectory("Choose directory containing image files...");
             if (imageDir == null) {
                 return;
             }   
             // Find images with extension
             String file_ext = tools.findImageType(new File(imageDir));
-            ArrayList<String> imageFiles = tools.findImages(imageDir, file_ext);
-            if (imageFiles == null) {
-                IJ.showMessage("Error", "No images found with "+file_ext+" extension");
+            System.out.println("file extention " + file_ext);
+            
+            ArrayList<String> imageFiles = new ArrayList();
+            tools.findImages(imageDir, file_ext, imageFiles);
+            if (imageFiles.isEmpty()) {
+                IJ.showMessage("Error", "No images found with " + file_ext + " extension");
                 return;
             }
-            // create output folder
-            outDirResults = imageDir + File.separator+ "Results"+ File.separator;
+            System.out.println(imageFiles);
+            
+            // Create output folder
+            outDirResults = imageDir + File.separator + "Results" + File.separator;
             File outDir = new File(outDirResults);
             if (!Files.exists(Paths.get(outDirResults))) {
                 outDir.mkdir();
             }
+            // Write header in results file
+            String header = "Image name\tFocused slice\tNb bacteria\tBacteria total area (µm2)\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std\n";
+            FileWriter fwResults = new FileWriter(outDirResults + "results.xls", false);
+            results = new BufferedWriter(fwResults);
+            results.write(header);
+            results.flush();
             
-            // create OME-XML metadata store of the latest schema version
+            // Create OME-XML metadata store of the latest schema version
             ServiceFactory factory;
             factory = new ServiceFactory();
             OMEXMLService service = factory.getInstance(OMEXMLService.class);
             IMetadata meta = service.createOMEXMLMetadata();
             ImageProcessorReader reader = new ImageProcessorReader();
             reader.setMetadataStore(meta);
-            // Find calibration
             reader.setId(imageFiles.get(0));
-            //tools.cal = tools.findImageCalib(meta);
             
-            // Write header
+            // Dialog box
+            tools.dialog();
+            if (tools.canceled) {
+                IJ.showMessage("Error", "Plugin canceled");
+                return;
+            }
             
-            String header = "Image Name\t#Bacteria\tMean Area\tStd mean area\tMean lenght\tStd mean length\n";
-            FileWriter fwBacts = new FileWriter(outDirResults + "Bacteria_Results.xls", false);
-            bacts_results_analyze = new BufferedWriter(fwBacts);
-            bacts_results_analyze.write(header);
-            bacts_results_analyze.flush();
+            // Image calibration
+            tools.setImageCalib();
             
             for (String f : imageFiles) {
                 reader.setId(f);
                 String rootName = FilenameUtils.getBaseName(f);
+                tools.print("--- ANALYZING IMAGE " + rootName + " ------");
+                
                 ImporterOptions options = new ImporterOptions();
                 options.setId(f);
-                options.setSplitChannels(true);
                 options.setQuiet(true);
                 options.setColorMode(ImporterOptions.COLOR_MODE_GRAYSCALE);
                  
-                // open image
-                System.out.println("--- Opening image  ...");
-                ImagePlus img = BF.openImagePlus(options)[0];
+                // Open stack
+                ImagePlus stack = BF.openImagePlus(options)[0];
                 
-                // Find bateria with omnipose
-                Objects3DIntPopulation bactPop = tools.omniPoseBactsPop(img);
-                int bacts = bactPop.getNbObjects();
-                System.out.println(bacts +" bacteria found");
+                // Invert stack
+                IJ.run(stack, "Invert", "stack");
                 
-                // write parameters
-                tools.write_parameters(bactPop, rootName, bacts_results_analyze);
+                // Get focused slice
+                tools.print("- Finding focused slice -");
+                Find_focused_slices focus = new Find_focused_slices();
+                focus.setParams(100, 0, false, false);
+                ImagePlus img = focus.run(stack);
+                String focusedSlice = img.getProperty("Label").toString().replace("Z_", "");
+                System.out.println("Focused slice in stack: " + focusedSlice);
                 
-                // save images
-                tools.saveObjects(img, bactPop, outDirResults+"Bacteria_objects.tif");
+                // Detect bacteria with Omnipose
+                tools.print("- Detecting bacteria -");
+                Objects3DIntPopulation bactPop = tools.omniposeDetection(img);
+                System.out.println(bactPop.getNbObjects() + " bacteria found");
+                
+                // Save results
+                tools.print("- Saving results -");
+                tools.saveResults(bactPop, focusedSlice, rootName, results);
+                
+                // Save images
+                tools.drawResults(img, bactPop, rootName, outDirResults);
                 tools.flush_close(img);
             }
         
-        IJ.showStatus("Process done");
-    }   catch (IOException | FormatException | DependencyException | ServiceException ex) {
+            tools.print("--- All done! ---");
+            
+        }   catch (IOException | FormatException | DependencyException | ServiceException ex) {
             Logger.getLogger(Bacteria_Omni.class.getName()).log(Level.SEVERE, null, ex);
         }  
     }
