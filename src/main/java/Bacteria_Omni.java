@@ -1,7 +1,6 @@
 import BacteriaOmni_Tools.Find_focused_slices;
 import BacteriaOmni_Tools.Tools;
 import ij.*;
-import ij.gui.WaitForUserDialog;
 import ij.plugin.PlugIn;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -63,7 +62,7 @@ public class Bacteria_Omni implements PlugIn {
                 outDir.mkdir();
             }
             // Write header in results file
-            String header = "Parent folder\tImage name\tFocused slice\tNb bacteria\tBacteria total area (µm2)\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std\n";
+            String header = "Parent folder\tImage name\tImage area (µm2)\tFocused slice\tNb bacteria\tBacteria total area (µm2)\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std\n";
             FileWriter fwResults = new FileWriter(outDirResults + "results.xls", false);
             results = new BufferedWriter(fwResults);
             results.write(header);
@@ -120,7 +119,8 @@ public class Bacteria_Omni implements PlugIn {
                 
                 // Save results
                 tools.print("- Saving results -");
-                tools.saveResults(bactPop, focusedSlice, rootName, parentFolder, results);
+                double imgArea = img.getHeight()*img.getWidth()*tools.pixelWidth*tools.pixelWidth;
+                tools.saveResults(bactPop, imgArea, focusedSlice, rootName, parentFolder, results);
                 
                 // Save images
                 tools.drawResults(img, bactPop, rootName, parentFolder, outDirResults);

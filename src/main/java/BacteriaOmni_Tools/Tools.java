@@ -15,11 +15,8 @@ import java.awt.Font;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.stream.Collectors;
 import javax.swing.ImageIcon;
 import mcib3d.geom2.Object3DInt;
 import mcib3d.geom2.Objects3DIntPopulation;
@@ -159,7 +156,7 @@ public class Tools {
         
         gd.addMessage("Bacteria detection", Font.getFont("Monospace"), Color.blue);
         if (IJ.isWindows()) {
-            omniposeEnvDirPath = System.getProperty("user.home")+"\\miniconda3\\envs\\omnipose";
+            omniposeEnvDirPath = System.getProperty("user.home")+"\\Miniconda3\\envs\\omnipose";
             omniposeModelsPath = System.getProperty("user.home")+"\\.cellpose\\models\\";
         }
         gd.addDirectoryField("Omnipose environment directory: ", omniposeEnvDirPath);
@@ -245,7 +242,7 @@ public class Tools {
     /**
      * Compute bacteria parameters and save them in file
      */
-    public void saveResults(Objects3DIntPopulation pop, String focusedSlice, String imgName, String parentFolder, BufferedWriter file) throws IOException {
+    public void saveResults(Objects3DIntPopulation pop, double imageArea, String focusedSlice, String imgName, String parentFolder, BufferedWriter file) throws IOException {
         DescriptiveStatistics areas = new DescriptiveStatistics();
         DescriptiveStatistics lengths = new DescriptiveStatistics();
         for (Object3DInt obj : pop.getObjects3DInt()) {
@@ -259,7 +256,7 @@ public class Tools {
         double stdArea = areas.getStandardDeviation();
         double meanLength = lengths.getMean();
         double stdlength = lengths.getStandardDeviation();
-        file.write(parentFolder+"\t"+imgName+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+totalArea+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
+        file.write(parentFolder+"\t"+imgName+"\t"+imageArea+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+totalArea+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
         file.flush();
     }
     
