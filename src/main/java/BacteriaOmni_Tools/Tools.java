@@ -8,7 +8,10 @@ import ij.io.FileSaver;
 import ij.measure.Calibration;
 import ij.plugin.Duplicator;
 import fiji.util.gui.GenericDialogPlus;
+import ij.gui.WaitForUserDialog;
+import ij.measure.ResultsTable;
 import ij.plugin.RGBStackMerge;
+import ij.plugin.filter.ParticleAnalyzer;
 import ij.process.ImageProcessor;
 import java.awt.Color;
 import java.awt.Font;
@@ -242,21 +245,42 @@ public class Tools {
     /**
      * Compute bacteria parameters and save them in file
      */
-    public void saveResults(Objects3DIntPopulation pop, double imageArea, String focusedSlice, String imgName, String parentFolder, BufferedWriter file) throws IOException {
-        DescriptiveStatistics areas = new DescriptiveStatistics();
-        DescriptiveStatistics lengths = new DescriptiveStatistics();
+    public void saveResults(Objects3DIntPopulation pop, ImagePlus img, String focusedSlice, String imgName, String parentFolder, BufferedWriter file) throws IOException {
+        double imgArea = img.getHeight()*img.getWidth()*pixelWidth*pixelWidth;
+        
+        
+        DescriptiveStatistics circularity, aspectRatio, roundness;
+        if (pop.getNbObjects() > 0) {
+            ImageHandler imh = ImageHandler.wrap(img).createSameDimensions();
+            pop.drawInImage(imh);
+            ResultsTable resultsTable = new ResultsTable();
+            ParticleAnalyzer particleAnalyzer = new ParticleAnalyzer(ParticleAnalyzer.CLEAR_WORKSHEET, ParticleAnalyzer.SHAPE_DESCRIPTORS+ParticleAnalyzer.LIMIT, resultsTable, 0, Double.MAX_VALUE);
+            IJ.setThreshold(imh.getImagePlus(), 1, Double.MAX_VALUE);
+            particleAnalyzer.analyze(imh.getImagePlus());
+            circularity = new DescriptiveStatistics(resultsTable.getColumn("Circ."));
+            aspectRatio = new DescriptiveStatistics(resultsTable.getColumn("AR"));
+            roundness = new DescriptiveStatistics(resultsTable.getColumn("Round"));
+        } else {
+            circularity = new DescriptiveStatistics();
+            aspectRatio = new DescriptiveStatistics();
+            roundness = new DescriptiveStatistics();
+        }
+        
+        DescriptiveStatistics area = new DescriptiveStatistics();
+        DescriptiveStatistics length = new DescriptiveStatistics();
         for (Object3DInt obj : pop.getObjects3DInt()) {
-            areas.addValue(new MeasureVolume(obj).getVolumeUnit());
+            area.addValue(new MeasureVolume(obj).getVolumeUnit());
             VoxelInt feret1Unit = new MeasureFeret(obj).getFeret1Unit();
             VoxelInt feret2Unit = new MeasureFeret(obj).getFeret2Unit();
-            lengths.addValue(feret1Unit.distance(feret2Unit));
+            length.addValue(feret1Unit.distance(feret2Unit));
         }
-        double totalArea = areas.getSum();
-        double meanArea = areas.getMean();
-        double stdArea = areas.getStandardDeviation();
-        double meanLength = lengths.getMean();
-        double stdlength = lengths.getStandardDeviation();
-        file.write(parentFolder+"\t"+imgName+"\t"+imageArea+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+totalArea+"\t"+meanArea+"\t"+stdArea+"\t"+meanLength+"\t"+stdlength+"\n");
+
+        file.write(parentFolder+"\t"+imgName+"\t"+imgArea+"\t"+focusedSlice+"\t"+pop.getNbObjects()+"\t"+
+                area.getSum()+"\t"+area.getMean()+"\t"+area.getStandardDeviation()+"\t"+
+                length.getMean()+"\t"+length.getStandardDeviation()+"\t"+
+                circularity.getMean()+"\t"+circularity.getStandardDeviation()+"\t"+
+                aspectRatio.getMean()+"\t"+aspectRatio.getStandardDeviation()+"\t"+
+                roundness.getMean()+"\t"+roundness.getStandardDeviation()+"\n");
         file.flush();
     }
     

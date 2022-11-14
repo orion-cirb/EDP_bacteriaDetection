@@ -62,7 +62,10 @@ public class Bacteria_Omni implements PlugIn {
                 outDir.mkdir();
             }
             // Write header in results file
-            String header = "Parent folder\tImage name\tImage area (µm2)\tFocused slice\tNb bacteria\tBacteria total area (µm2)\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std\n";
+            String header = "Parent folder\tImage name\tImage area (µm2)\tFocused slice\tNb bacteria\tBacteria total area (µm2)"
+                    + "\tMean bacterium area (µm2)\tBacterium area std\tMean bacterium lenght (µm)\tBacterium lenght std"
+                    + "\tMean bacterium circularity\tBacterium circularity std\tMean bacterium aspect ratio\tBacterium aspect ratio std"
+                    + "\tMean bacterium roundness\tBacterium roundness std\n";
             FileWriter fwResults = new FileWriter(outDirResults + "results.xls", false);
             results = new BufferedWriter(fwResults);
             results.write(header);
@@ -119,8 +122,7 @@ public class Bacteria_Omni implements PlugIn {
                 
                 // Save results
                 tools.print("- Saving results -");
-                double imgArea = img.getHeight()*img.getWidth()*tools.pixelWidth*tools.pixelWidth;
-                tools.saveResults(bactPop, imgArea, focusedSlice, rootName, parentFolder, results);
+                tools.saveResults(bactPop, img, focusedSlice, rootName, parentFolder, results);
                 
                 // Save images
                 tools.drawResults(img, bactPop, rootName, parentFolder, outDirResults);
