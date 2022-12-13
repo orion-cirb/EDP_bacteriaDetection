@@ -1,4 +1,4 @@
-# PV_PNN
+# EDP_bacteriaDetection
 
 * **Developed for:** Eau de Paris
 * **Team:** Espeli
@@ -23,5 +23,5 @@
 
 ### Version history
 
-Version 1 released on November 17, 2022.
+Version 1 released on November 14, 2022.
 
